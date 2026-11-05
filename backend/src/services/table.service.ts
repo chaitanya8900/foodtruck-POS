@@ -154,7 +154,13 @@ export async function getTableQRCodeDataUrl(
   frontendUrl?: string
 ): Promise<{ table: any; qrCodeDataUrl: string; orderUrl: string }> {
   const table = await getTableById(id, businessId);
-  const base = (frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const defaultFrontendUrl =
+    process.env.PUBLIC_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:3000';
+  const base = (frontendUrl || defaultFrontendUrl).replace(/\/$/, '');
   const orderUrl = `${base}/order/t/${table.qr_token}`;
 
   const qrCodeDataUrl = await QRCode.toDataURL(orderUrl, {

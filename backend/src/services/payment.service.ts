@@ -16,7 +16,12 @@ const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT';
 const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
 const PHONEPE_SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
 const PHONEPE_ENV = process.env.PHONEPE_ENV || 'UAT';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL =
+  process.env.PUBLIC_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+  process.env.FRONTEND_URL ||
+  'http://localhost:3000';
 
 /**
  * Calculates PhonePe SHA256 checksum:

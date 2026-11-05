@@ -49,7 +49,16 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      const isVercelDomain =
+        origin.endsWith('.vercel.app') ||
+        (process.env.VERCEL_URL && origin === `https://${process.env.VERCEL_URL}`) ||
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL && origin === `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        isVercelDomain ||
+        (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
@@ -153,13 +162,14 @@ httpServer.listen(PORT, () => {
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 
   // Keep PostgreSQL connection pool warm (every 45s) to eliminate cold starts and idle disconnects
-  setInterval(async () => {
+  const keepWarmTimer = setInterval(async () => {
     try {
       await prisma.$queryRaw`SELECT 1`;
     } catch {
       // Ignored
     }
   }, 45000);
+  keepWarmTimer.unref();
 });
 
 // Graceful Shutdown
