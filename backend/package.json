@@ -2,7 +2,7 @@
   "name": "food-truck-pos-backend",
   "version": "1.0.0",
   "description": "Express.js + TypeScript backend for Food Truck POS & Order Management System",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

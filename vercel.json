@@ -4,7 +4,7 @@
     "backend": {
       "root": "backend",
       "framework": "express",
-      "entrypoint": "dist/index.js",
+      "entrypoint": "src/index.ts",
       "buildCommand": "npm run build",
       "bindings": [
         {
