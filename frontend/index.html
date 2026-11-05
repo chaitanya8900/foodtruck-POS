@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Food Truck POS & Ordering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Polyfill crypto.randomUUID for mobile browsers accessing over local IP (insecure HTTP context)
+      if (typeof window !== 'undefined') {
+        if (!window.crypto) {
+          window.crypto = {};
+        }
+        if (!window.crypto.randomUUID) {
+          window.crypto.randomUUID = function() {
+            if (window.crypto.getRandomValues) {
+              return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+                return (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16);
+              });
+            }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              var r = (Math.random() * 16) | 0;
+              var v = c === 'x' ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+          };
+        }
+      }
+
+      window.addEventListener('error', function(e) {
+        var errDiv = document.getElementById('debug-error');
+        if (!errDiv) {
+          errDiv = document.createElement('div');
+          errDiv.id = 'debug-error';
+          errDiv.style = 'position:fixed;top:0;left:0;right:0;background:#ffebee;color:#c62828;padding:16px;font-family:sans-serif;font-size:12px;z-index:999999;word-break:break-all;border-bottom:2px solid #ef5350;box-shadow:0 4px 6px rgba(0,0,0,0.1)';
+          document.body.appendChild(errDiv);
+        }
+        errDiv.innerHTML += '<strong>JS Error:</strong> ' + e.message + '<br><small>' + (e.filename || '') + ':' + (e.lineno || '') + '</small><br><br>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        var errDiv = document.getElementById('debug-error');
+        if (!errDiv) {
+          errDiv = document.createElement('div');
+          errDiv.id = 'debug-error';
+          errDiv.style = 'position:fixed;top:0;left:0;right:0;background:#ffebee;color:#c62828;padding:16px;font-family:sans-serif;font-size:12px;z-index:999999;word-break:break-all;border-bottom:2px solid #ef5350;box-shadow:0 4px 6px rgba(0,0,0,0.1)';
+          document.body.appendChild(errDiv);
+        }
+        errDiv.innerHTML += '<strong>Unhandled Rejection:</strong> ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '<br><br>';
+      });
+    </script>
+  </head>
+  <body class="bg-[#F8EFE6] text-[#3A0A0F] antialiased">
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F8EFE6; font-family: sans-serif; color: #3A0A0F; padding: 20px;">
+        <div style="text-align: center;">
+          <div style="width: 44px; height: 44px; border: 4px solid #EAD8C0; border-top-color: #3A0A0F; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+          <p style="font-size: 15px; font-weight: bold; margin: 0; letter-spacing: -0.2px;">Setting Up Mobile Dining...</p>
+          <p style="font-size: 11px; opacity: 0.7; margin-top: 6px;">Loading scannable menu and table details</p>
+        </div>
+        <style>
+          @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

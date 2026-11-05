@@ -1,0 +1,375 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+  KITCHEN_STAFF
+}
+
+enum ModifierSelectionType {
+  SINGLE
+  MULTIPLE
+}
+
+enum OrderSource {
+  POS
+  QR
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  PHONEPE
+}
+
+enum DocumentType {
+  CUSTOMER_RECEIPT
+  KOT
+}
+
+enum PrintJobStatus {
+  PENDING
+  PRINTING
+  PRINTED
+  FAILED
+}
+
+model Business {
+  id                  String            @id @default(uuid()) @db.Uuid
+  name                String            @db.VarChar(255)
+  address             String?           @db.Text
+  phone               String?           @db.VarChar(50)
+  gstin               String?           @db.VarChar(50)
+  logo_url            String?           @db.Text
+  timezone            String            @default("Asia/Kolkata") @db.VarChar(100)
+  currency            String            @default("INR") @db.VarChar(10)
+  tax_rate            Decimal           @default(5.00) @db.Decimal(5, 2)
+  receipt_header      String?           @db.Text
+  receipt_footer      String?           @db.Text
+  fssai_number        String?           @db.VarChar(50)
+  is_dine_in_enabled  Boolean           @default(true)
+  is_takeaway_enabled Boolean           @default(true)
+  is_active           Boolean           @default(true)
+  operating_hours     Json?
+  token_prefix        String            @default("") @db.VarChar(10)
+  token_reset_time    String            @default("04:00") @db.VarChar(10)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  users               User[]
+  categories          MenuCategory[]
+  items               MenuItem[]
+  modifier_groups     ModifierGroup[]
+  tables              Table[]
+  orders              Order[]
+  token_sequences     TokenSequence[]
+  audit_logs          AuditLog[]
+  settings            BusinessSetting[]
+
+  @@map("businesses")
+}
+
+model User {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  name                String            @db.VarChar(255)
+  email               String            @unique @db.VarChar(255)
+  password_hash       String            @db.VarChar(255)
+  role                Role              @default(CASHIER)
+  is_active           Boolean           @default(true)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  orders_handled      Order[]           @relation("CashierOrders")
+  payments_recorded   Payment[]         @relation("RecordedPayments")
+  audit_logs          AuditLog[]
+
+  @@index([business_id])
+  @@index([email])
+  @@map("users")
+}
+
+model MenuCategory {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  name                String            @db.VarChar(255)
+  description         String?           @db.Text
+  image_url           String?           @db.Text
+  display_order       Int               @default(0)
+  is_active           Boolean           @default(true)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  items               MenuItem[]
+
+  @@index([business_id])
+  @@index([display_order])
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  category_id         String            @db.Uuid
+  name                String            @db.VarChar(255)
+  description         String?           @db.Text
+  price               Decimal           @db.Decimal(10, 2)
+  image_url           String?           @db.Text
+  is_available        Boolean           @default(true)
+  preparation_time    Int?
+  tax_rate            Decimal           @default(5.00) @db.Decimal(5, 2)
+  display_order       Int               @default(0)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  category            MenuCategory      @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  modifier_groups     ModifierGroup[]
+  order_items         OrderItem[]
+
+  @@index([business_id])
+  @@index([category_id])
+  @@index([is_available])
+  @@map("menu_items")
+}
+
+model ModifierGroup {
+  id                  String                @id @default(uuid()) @db.Uuid
+  business_id         String                @db.Uuid
+  menu_item_id        String                @db.Uuid
+  name                String                @db.VarChar(255)
+  selection_type      ModifierSelectionType @default(SINGLE)
+  min_selections      Int                   @default(0)
+  max_selections      Int                   @default(1)
+  is_required         Boolean               @default(false)
+  display_order       Int                   @default(0)
+  created_at          DateTime              @default(now())
+
+  business            Business              @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  menu_item           MenuItem              @relation(fields: [menu_item_id], references: [id], onDelete: Cascade)
+  options             ModifierOption[]
+
+  @@index([business_id])
+  @@index([menu_item_id])
+  @@map("modifier_groups")
+}
+
+model ModifierOption {
+  id                  String            @id @default(uuid()) @db.Uuid
+  group_id            String            @db.Uuid
+  name                String            @db.VarChar(255)
+  additional_price    Decimal           @default(0.00) @db.Decimal(10, 2)
+  is_available        Boolean           @default(true)
+  display_order       Int               @default(0)
+  created_at          DateTime          @default(now())
+
+  group               ModifierGroup     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id])
+  @@map("modifier_options")
+}
+
+model Table {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  table_name          String            @db.VarChar(100)
+  qr_token            String            @unique @db.VarChar(255)
+  is_active           Boolean           @default(true)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  orders              Order[]
+
+  @@index([business_id])
+  @@index([qr_token])
+  @@map("tables")
+}
+
+model Order {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  order_number        String            @db.VarChar(50)
+  token_number        String?           @db.VarChar(50)
+  source              OrderSource
+  order_type          OrderType
+  table_id            String?           @db.Uuid
+  qr_token_id         String?           @db.VarChar(255)
+  order_status        OrderStatus       @default(PENDING_PAYMENT)
+  payment_status      PaymentStatus     @default(PENDING)
+  payment_method      PaymentMethod?
+  subtotal            Decimal           @db.Decimal(10, 2)
+  discount            Decimal           @default(0.00) @db.Decimal(10, 2)
+  tax_amount          Decimal           @db.Decimal(10, 2)
+  total_amount        Decimal           @db.Decimal(10, 2)
+  special_instructions String?          @db.Text
+  cashier_id          String?           @db.Uuid
+  cancel_reason       String?           @db.Text
+  created_at          DateTime          @default(now())
+  confirmed_at        DateTime?
+  completed_at        DateTime?
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  table               Table?            @relation(fields: [table_id], references: [id], onDelete: SetNull)
+  cashier             User?             @relation("CashierOrders", fields: [cashier_id], references: [id], onDelete: SetNull)
+  items               OrderItem[]
+  payments            Payment[]
+  print_jobs          PrintJob[]
+
+  @@index([business_id])
+  @@index([business_id, created_at])
+  @@index([business_id, order_status])
+  @@index([business_id, source])
+  @@index([order_number])
+  @@index([token_number])
+  @@index([order_status])
+  @@index([payment_status])
+  @@index([created_at])
+  @@index([table_id])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                      String        @id @default(uuid()) @db.Uuid
+  order_id                String        @db.Uuid
+  menu_item_id            String?       @db.Uuid
+  item_name_snapshot      String        @db.VarChar(255)
+  unit_price_snapshot     Decimal       @db.Decimal(10, 2)
+  quantity                Int
+  customization_snapshot  Json?
+  special_instructions    String?       @db.Text
+  line_total              Decimal       @db.Decimal(10, 2)
+
+  order                   Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  menu_item               MenuItem?     @relation(fields: [menu_item_id], references: [id], onDelete: SetNull)
+
+  @@index([order_id])
+  @@index([menu_item_id])
+  @@map("order_items")
+}
+
+model Payment {
+  id                              String        @id @default(uuid()) @db.Uuid
+  order_id                        String        @db.Uuid
+  payment_method                  PaymentMethod
+  payment_status                  PaymentStatus @default(PENDING)
+  amount                          Decimal       @db.Decimal(10, 2)
+  gateway_reference               String?       @db.VarChar(255)
+  transaction_reference           String?       @db.VarChar(255)
+  phonepe_merchant_transaction_id String?       @unique @db.VarChar(255)
+  verified_at                     DateTime?
+  recorded_by                     String?       @db.Uuid
+  created_at                      DateTime      @default(now())
+  updated_at                      DateTime      @updatedAt
+
+  order                           Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  recorder                        User?         @relation("RecordedPayments", fields: [recorded_by], references: [id], onDelete: SetNull)
+
+  @@index([order_id])
+  @@index([payment_status])
+  @@index([phonepe_merchant_transaction_id])
+  @@map("payments")
+}
+
+model PrintJob {
+  id                  String            @id @default(uuid()) @db.Uuid
+  order_id            String            @db.Uuid
+  document_type       DocumentType
+  status              PrintJobStatus    @default(PENDING)
+  attempt_count       Int               @default(0)
+  failure_reason      String?           @db.Text
+  is_reprint          Boolean           @default(false)
+  created_at          DateTime          @default(now())
+  printed_at          DateTime?
+  updated_at          DateTime          @updatedAt
+
+  order               Order             @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@index([status])
+  @@index([document_type])
+  @@map("print_jobs")
+}
+
+model TokenSequence {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  business_date       DateTime          @db.Date
+  current_sequence    Int               @default(0)
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@unique([business_id, business_date])
+  @@index([business_id])
+  @@map("token_sequences")
+}
+
+model AuditLog {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  user_id             String?           @db.Uuid
+  action              String            @db.VarChar(100)
+  entity_type         String            @db.VarChar(100)
+  entity_id           String?           @db.Uuid
+  old_values          Json?
+  new_values          Json?
+  ip_address          String?           @db.VarChar(100)
+  created_at          DateTime          @default(now())
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  user                User?             @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([business_id])
+  @@index([business_id, created_at])
+  @@index([action])
+  @@index([entity_type])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+model BusinessSetting {
+  id                  String            @id @default(uuid()) @db.Uuid
+  business_id         String            @db.Uuid
+  setting_key         String            @db.VarChar(100)
+  setting_value       String            @db.Text
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  business            Business          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@unique([business_id, setting_key])
+  @@index([business_id])
+  @@map("business_settings")
+}

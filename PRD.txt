@@ -1,0 +1,2234 @@
+
+=== PAGE 1 ===
+PRODUCT REQUIREMENTS DOCUMENT (PRD)  
+Food Truck POS, QR Self -Ordering & Kitchen Order Ticket Management System  
+Document Version:  1.0 
+Document Status:  Initial Product Requirements Specification  
+Product Type:  Web -based Restaurant POS and Order Management System  
+Target Business:  Food Trucks, Small Restaurants and Quick -Service Food Businesses  
+Initial Deployment:  Single Food Truck  
+Preferred Architecture:  Centralized Backend + Web Applications + Local Thermal 
+Printer Agent  
+ 
+1. EXECUTIVE SUMMARY  
+1.1 Product Overview  
+The proposed product is an integrated Point of Sale (POS), QR Code Self -Ordering, 
+Billing, Payment Management and Kitchen Order Ticket (KOT) Management System 
+designed initially for a food truck.  
+The system will allow customers to order food through two different channels:  
+1. Counter Ordering:  Customers place orders directly with the cashier, who enters 
+the items into the POS system.  
+2. QR Code Self -Ordering:  Customers scan a QR code placed on their table or at 
+the food truck, browse the digital menu, add items to their cart and submit their 
+orders using their mobile phones.  
+Both ordering channels will connect to one centralized backend and database. All 
+orders will follow a common order -processing, payment, token -generation and printing 
+workflow.  
+The system will use a single thermal printer installed at the billing counter.  
+For every confirmed order, the printer will print two consecutive slips:  
+1. Customer Token / Receipt.  
+2. Kitchen Order Ticket (KOT).  
+The printer will automatically cut the paper between the two slips. The cashier will hand 
+the customer token to the customer and physically deliver the KOT to the kitchen.  
+The system will also provide an administrative dashboard for managing menus, prices, 
+orders, payments, tables, sales reports and other business operations.  
+1.2 Business Objectives  
+
+=== PAGE 2 ===
+The primary objectives are:  
+• Digitize the food truck's complete ordering and billing process.  
+• Eliminate manual handwritten bills and kitchen tickets.  
+• Provide customers with a convenient QR -based ordering experience.  
+• Reduce the time required to place and process orders.  
+• Maintain a single centralized order database.  
+• Prevent unpaid orders from entering kitchen preparation.  
+• Automate customer token and KOT printing.  
+• Maintain accurate sales and payment records.  
+• Provide the owner with visibility into daily business operations.  
+• Build an architecture that can support additional food trucks or restaurant 
+locations in the future.  
+1.3 Key Product Principles  
+The product must follow these principles:  
+1. Every order, regardless of its source, must be stored in the same database.  
+2. Counter and QR ordering must use the same menu and pricing information.  
+3. No order should enter the kitchen workflow without payment confirmation.  
+4. Every confirmed order must have a unique customer -facing token.  
+5. Customer token and KOT must contain the same order/token reference.  
+6. Only one thermal printer is required in the initial deployment.  
+7. Printing failures must not result in lost orders.  
+8. Payment verification must happen securely on the backend.  
+9. The system must be easy enough for non -technical food truck staff to operate.  
+10. The customer QR ordering experience must work without installing a mobile 
+application.  
+ 
+2. PRODUCT SCOPE  
+2.1 Applications / Interfaces  
+The product will consist of the following interfaces.  
+
+=== PAGE 3 ===
+Interface  Primary User  Purpose  
+Admin Dashboard  Owner/Admin  Complete business and system 
+management  
+POS / Counter 
+Dashboard  Cashier  Manual order creation, billing and 
+payments  
+Mobile Orders 
+Dashboard  Cashier  Manage orders submitted through QR  
+Customer QR Website  Customer  Browse menu and place orders  
+Kitchen Order 
+Management  Optional staff 
+interface  View and manage kitchen order 
+statuses  
+Local Printing Agent  Background service  Communicate with the thermal printer  
+These interfaces will use the same backend and centralized database.  
+2.2 MVP Scope  
+The first production release must include:  
+• Admin login and staff login.  
+• Menu category management.  
+• Menu item management.  
+• Counter POS.  
+• Cart and order calculation.  
+• Cash and UPI payment recording.  
+• QR code generation for tables.  
+• Customer -facing digital menu.  
+• Dine -in and takeaway ordering.  
+• Prepaid UPI payment integration.  
+• Pay-at-counter order workflow.  
+• Mobile Orders dashboard.  
+• Unique token generation.  
+• Customer receipt printing.  
+
+=== PAGE 4 ===
+• KOT printing.  
+• Single -printer integration.  
+• Print -job management.  
+• Order history.  
+• Basic sales reports.  
+• Basic business settings.  
+2.3 Out of Scope for Initial Release  
+The following are not required for the first release:  
+• Separate kitchen thermal printer.  
+• Automatic order -ready SMS or WhatsApp notifications.  
+• Customer Android or iOS applications.  
+• Loyalty and reward points.  
+• Customer accounts and membership.  
+• Inventory and raw -material stock management.  
+• Recipe costing and ingredient consumption tracking.  
+• Multiple branches and franchise management.  
+• Advanced accounting integration.  
+• Delivery partner integration.  
+• AI-based sales forecasting.  
+The architecture should not prevent these features from being added later.  
+ 
+3. USER ROLES AND PERMISSIONS  
+The system must support role -based access control.  
+3.1 Admin / Owner  
+The Admin has complete access to the application.  
+Permissions:  
+• View dashboard and sales statistics.  
+• Create and manage menu categories.  
+
+=== PAGE 5 ===
+• Add, edit and delete menu items.  
+• Change item prices.  
+• Manage item availability.  
+• Configure taxes and business details.  
+• Manage tables and QR codes.  
+• View all orders.  
+• View payment records.  
+• View printing history.  
+• Reprint customer receipts and KOTs.  
+• Manage staff accounts.  
+• View sales and payment reports.  
+• Configure printer settings.  
+• Configure payment gateway settings.  
+• Configure system settings.  
+3.2 Cashier  
+The Cashier manages daily customer orders.  
+Permissions:  
+• Access POS.  
+• Create counter orders.  
+• View menu items and prices.  
+• Add and remove items from cart.  
+• Apply authorized discounts.  
+• Record cash payments.  
+• Record verified UPI payments.  
+• View Mobile Orders.  
+• Confirm Pay -at-Counter orders.  
+• Issue tokens.  
+• Trigger printing.  
+
+=== PAGE 6 ===
+• Reprint authorized receipts and KOTs.  
+• View current -day orders.  
+Cashiers must not have permission to change global menu prices, business settings or 
+payment gateway credentials.  
+3.3 Kitchen Staff  
+If the optional kitchen dashboard is enabled, kitchen staff can:  
+• View confirmed orders.  
+• View order details.  
+• Mark orders as Preparing.  
+• Mark orders as Ready.  
+• Mark orders as Completed.  
+• View order history.  
+Kitchen staff cannot modify payments or menu prices.  
+3.4 Customer  
+Customers do not need an account.  
+They can:  
+• Scan a QR code.  
+• View the menu.  
+• View item descriptions and prices.  
+• Select items.  
+• Customize items where supported.  
+• Add items to cart.  
+• Choose dine -in or takeaway as determined by the QR code.  
+• Choose prepaid UPI or Pay at Counter where permitted.  
+• Place an order.  
+• View their order confirmation and token information where applicable.  
+ 
+4. SYSTEM MODULE 1 – ADMIN DASHBOARD  
+
+=== PAGE 7 ===
+4.1 Dashboard Overview  
+The admin dashboard will provide a summary of the food truck's business operations.  
+It should display:  
+• Total orders today.  
+• Total confirmed orders.  
+• Total pending -payment orders.  
+• Total cancelled orders.  
+• Total sales today.  
+• Total cash collections.  
+• Total UPI collections.  
+• Orders by source.  
+• Orders by order type.  
+• Popular menu items.  
+• Printer connection status.  
+Suggested dashboard layout:  
+Top statistics:  
+• Today's Orders  
+• Today's Revenue  
+• Cash Collections  
+• UPI Collections  
+Additional sections:  
+• Recent Orders  
+• Popular Items  
+• Payment Breakdown  
+• Order Source Breakdown  
+4.2 Menu Category Management  
+Admin must be able to:  
+• Create a category.  
+
+=== PAGE 8 ===
+• Edit a category.  
+• Delete a category, provided it is not referenced by active menu items.  
+• Change category name.  
+• Add a category description.  
+• Upload category images if required.  
+• Change category display order.  
+• Activate/deactivate a category.  
+Examples:  
+• Burgers  
+• Sandwiches  
+• Snacks  
+• Beverages  
+• Desserts  
+Categories should be displayed in the same order on the POS and customer QR menu.  
+4.3 Menu Item Management  
+Every menu item must support:  
+Field  Description  
+Item ID  Unique internal identifier  
+Item Name  Name displayed to customers  
+Category  Associated menu category  
+Description  Short item description  
+Price  Selling price  
+Image  Optional product image  
+Availability  Available / Unavailable  
+Preparation Time  Optional estimated preparation time  
+Tax Configuration  Applicable tax configuration  
+
+=== PAGE 9 ===
+Display Order  Position in menu  
+Created At  Creation timestamp  
+Updated At  Last modification timestamp  
+Admin operations:  
+• Add item.  
+• Edit item.  
+• Delete or archive item.  
+• Change price.  
+• Change category.  
+• Update description.  
+• Upload/change image.  
+• Enable or disable availability.  
+• Reorder menu items.  
+Item Availability  
+When an item becomes unavailable:  
+• It must immediately become unavailable for new QR orders.  
+• It must not be selectable in new POS orders.  
+• Existing orders containing that item must remain unchanged.  
+• Historical orders must retain the original item details and price.  
+4.4 Item Customization  
+The system should support optional customization groups.  
+Examples:  
+Chicken Burger  
+• Extra Cheese: +₹30  
+• Extra Patty: +₹60  
+• Remove Onion: Free  
+• Extra Sauce: +₹10  
+
+=== PAGE 10 ===
+Customization types:  
+• Single selection.  
+• Multiple selection.  
+• Optional additions.  
+• Mandatory selections.  
+• Additional charges.  
+Admin should be able to configure:  
+• Customization group name.  
+• Selection type.  
+• Minimum selections.  
+• Maximum selections.  
+• Available options.  
+• Additional price per option.  
+The selected customizations must appear on the KOT.  
+4.5 Business Settings  
+Admin can configure:  
+• Business name.  
+• Business logo.  
+• Business address.  
+• Contact number.  
+• GSTIN, where applicable.  
+• FSSAI/business details where applicable.  
+• Receipt header.  
+• Receipt footer.  
+• Currency (INR initially).  
+• Tax configuration.  
+• Discount configuration.  
+• Token numbering configuration.  
+
+=== PAGE 11 ===
+• Business operating hours.  
+• Dine -in availability.  
+• Takeaway availability.  
+Tax settings must be configurable rather than hardcoded.  
+ 
+5. SYSTEM MODULE 2 – POS / COUNTER BILLING  
+5.1 Overview  
+The POS is the primary interface used by the cashier for customers who order directly at 
+the counter.  
+It must be optimized for touchscreen use and fast order entry.  
+5.2 POS Interface Layout  
+Recommended layout:  
+Left Section:  
+• Menu categories.  
+• Menu items.  
+• Item search.  
+• Item availability.  
+Right Section:  
+• Current cart.  
+• Selected items.  
+• Quantities.  
+• Customizations.  
+• Subtotal.  
+• Discounts.  
+• Taxes.  
+• Grand total.  
+• Payment selection.  
+• Confirm and Print button.  
+
+=== PAGE 12 ===
+5.3 Item Selection  
+Cashier should be able to:  
+• Select a category.  
+• View items in that category.  
+• Search items by name.  
+• Add an item to the cart.  
+• Add the same item multiple times.  
+• Change item quantity.  
+• Remove an item.  
+• Select item customizations.  
+• Add order -level instructions.  
+5.4 Cart Management  
+The cart must contain:  
+• Item name.  
+• Unit price.  
+• Quantity.  
+• Customizations.  
+• Customization charges.  
+• Item subtotal.  
+The system must calculate:  
+Subtotal = Sum of all item totals.  
+Grand Total = Subtotal - Discounts + Applicable Taxes.  
+All calculations must be performed or verified by the backend before an order is 
+confirmed.  
+The frontend must never be trusted to determine the final payable amount.  
+5.5 Counter Order Workflow  
+1. Cashier opens POS.  
+2. Cashier selects menu items.  
+
+=== PAGE 13 ===
+3. Cashier modifies quantities and customizations.  
+4. System calculates the amount.  
+5. Cashier selects order type:  
+o Dine -in. 
+o Takeaway.  
+6. If dine -in, cashier selects the table if applicable.  
+7. Cashier selects payment method:  
+o Cash.  
+o UPI.  
+8. Cashier verifies that payment has been received.  
+9. Cashier clicks Confirm Payment & Generate Token.  
+10. Backend creates the confirmed order.  
+11. Backend assigns a unique token number.  
+12. Backend creates two print jobs.  
+13. Local print agent sends the print commands.  
+14. Printer prints customer token.  
+15. Printer cuts between slips.  
+16. Printer prints KOT.  
+17. Printer completes the final cut.  
+18. Cashier gives the token to the customer and KOT to kitchen staff.  
+5.6 Payment Confirmation  
+The system must not generate a confirmed kitchen order until the cashier confirms 
+payment.  
+For cash:  
+• Cashier selects Cash.  
+• Records the amount received if required.  
+• System records the payment.  
+• Order is confirmed.  
+
+=== PAGE 14 ===
+For UPI at the counter:  
+• Customer completes payment using the merchant's UPI method.  
+• Cashier verifies the transaction.  
+• Cashier selects UPI.  
+• Cashier records a UPI reference where available.  
+• Order is confirmed.  
+The system should record the cashier who confirmed the payment.  
+5.7 Order Editing  
+Before confirmation:  
+• Items can be added.  
+• Items can be removed.  
+• Quantities can be changed.  
+• Customizations can be modified.  
+After confirmation:  
+• The original confirmed order should not be silently overwritten.  
+• Additional items should preferably be recorded through an additional -order 
+workflow.  
+• Any cancellation or correction must be logged.  
+• Reprints must retain the original order/token number.  
+ 
+6. SYSTEM MODULE 3 – CUSTOMER QR SELF -ORDERING  
+6.1 Overview  
+The customer -facing QR application will be a responsive web application.  
+Customers will access it using their mobile browser without installing any application.  
+6.2 QR Code Types  
+The system must support:  
+Table QR Codes  
+Each table receives a unique QR code.  
+
+=== PAGE 15 ===
+Examples:  
+• Table 01  
+• Table 02  
+• Table 03  
+• Table 04  
+Takeaway QR Code  
+A separate QR code can be displayed at the counter for customers ordering takeaway.  
+QR URLs should contain secure, unique identifiers rather than relying on editable table 
+numbers.  
+Example URL:  
+https://foodtruck.example/order/t/unique -table -token  
+The backend must validate the QR identifier and determine the associated table/order 
+type.  
+6.3 Customer Menu Page  
+When a customer scans the QR code:  
+1. The ordering website opens.  
+2. The business name and branding are displayed.  
+3. The system identifies the table or takeaway channel.  
+4. Available menu categories are displayed.  
+5. Customers can browse available food items.  
+Menu item cards should display:  
+• Image.  
+• Item name.  
+• Description.  
+• Price.  
+• Availability.  
+• Add button.  
+Unavailable items must be visibly marked and cannot be added to the cart.  
+6.4 Cart  
+
+=== PAGE 16 ===
+Customers can:  
+• Add menu items.  
+• Increase/decrease quantities.  
+• Remove items.  
+• Select available customizations.  
+• Add special instructions.  
+• View item -wise pricing.  
+• View subtotal.  
+• View applicable taxes.  
+• View final payable amount.  
+The cart must be mobile -friendly.  
+6.5 Order Type  
+The order type should preferably be determined by the QR code.  
+Table QR:  
+• Dine -in. 
+Takeaway QR:  
+• Takeaway.  
+For the takeaway QR, customers should not be asked to select a table.  
+The counter POS can allow the cashier to select either order type.  
+6.6 Customer Checkout  
+The checkout page must display:  
+• Selected items.  
+• Quantities.  
+• Customizations.  
+• Total amount.  
+• Order type.  
+• Table number, if applicable.  
+• Payment options.  
+
+=== PAGE 17 ===
+Payment options:  
+1. Prepaid UPI.  
+2. Pay at Counter.  
+The availability of payment methods should be configurable by the admin.  
+ 
+7. SYSTEM MODULE 4 – PAYMENT MANAGEMENT  
+7.1 Payment Types  
+The application must support:  
+• Cash.  
+• UPI at counter.  
+• Prepaid online UPI through a payment gateway.  
+The system must distinguish payment initiation from successful payment.  
+7.2 Prepaid UPI Workflow  
+1. Customer creates a QR order.  
+2. Backend creates an order with payment status Pending.  
+3. Backend initiates a payment request through the payment gateway.  
+4. Customer completes UPI payment.  
+5. Payment gateway communicates payment status to the backend.  
+6. Backend verifies the payment signature and transaction status.  
+7. Successful payment is recorded.  
+8. Order payment status becomes Paid.  
+9. Order becomes eligible for token issuance.  
+10. Order appears in the Mobile Orders dashboard.  
+11. Cashier clicks Generate Token & Print.  
+12. Backend assigns a token.  
+13. Customer token and KOT are printed.  
+The backend must not trust payment -success information received only from the 
+customer's browser.  
+
+=== PAGE 18 ===
+Payment webhooks must be verified.  
+7.3 Pay -at-Counter Workflow  
+1. Customer creates a QR order.  
+2. Customer selects Pay at Counter.  
+3. Order is saved.  
+4. Payment status becomes Pending.  
+5. Order status becomes Pending Payment.  
+6. No token is issued.  
+7. No KOT is printed.  
+8. Order appears in Mobile Orders.  
+9. Customer reaches the billing counter.  
+10. Cashier checks the order.  
+11. Cashier collects payment.  
+12. Cashier selects Cash or UPI.  
+13. Cashier confirms payment.  
+14. Backend records the payment.  
+15. Order status becomes Confirmed.  
+16. Token is generated.  
+17. Both slips are printed.  
+7.4 Payment Failure  
+If prepaid UPI fails:  
+• The order must not be confirmed.  
+• The kitchen must not receive a KOT.  
+• The customer should see a payment failure/pending message.  
+• The customer may retry payment within the configured payment window.  
+• The system must prevent multiple successful payments from creating duplicate 
+orders.  
+7.5 Refunds  
+
+=== PAGE 19 ===
+Refund functionality can be introduced in the first release if required by the payment 
+provider.  
+At minimum, the system should maintain:  
+• Original payment reference.  
+• Refund amount.  
+• Refund reason.  
+• Refund status.  
+• Initiated by.  
+• Refund timestamp.  
+Refunding a payment must not silently delete the order.  
+ 
+8. SYSTEM MODULE 5 – MOBILE ORDERS DASHBOARD  
+8.1 Overview  
+This is a dedicated page available to the cashier.  
+It manages orders created through customer QR ordering.  
+It is one of the most important components because it connects customer self -ordering 
+with the physical counter and kitchen workflow.  
+8.2 Order Categories  
+The page should have three main sections.  
+A. Pending Payment  
+Contains QR orders where customers selected Pay at Counter.  
+Displays:  
+• Order reference.  
+• Order time.  
+• Table number or Takeaway.  
+• Items.  
+• Quantities.  
+• Customizations.  
+• Total amount.  
+
+=== PAGE 20 ===
+• Payment status.  
+Available action:  
+Confirm Payment & Generate Token  
+The cashier selects the payment method, verifies payment and confirms the order.  
+B. Paid / Ready to Issue Token  
+Contains QR orders where prepaid UPI payment has been successfully verified but a 
+token has not yet been issued.  
+Displays:  
+• Order reference.  
+• Payment reference.  
+• Payment amount.  
+• Table/takeaway information.  
+• Items.  
+• Order time.  
+Available action:  
+Generate Token & Print  
+C. Confirmed / Printed  
+Contains orders for which tokens have already been generated.  
+Displays:  
+• Token number.  
+• Order reference.  
+• Order type.  
+• Payment method.  
+• Print status.  
+• Order status.  
+Available actions:  
+• View order.  
+• Reprint customer token.  
+
+=== PAGE 21 ===
+• Reprint KOT.  
+• View payment details.  
+Reprints must be clearly identified as copies.  
+8.3 Mobile Orders Real -Time Updates  
+The dashboard should automatically receive newly submitted QR orders without 
+requiring the cashier to refresh the page.  
+Preferred implementation:  
+• Socket.IO.  
+If the socket connection is lost:  
+• The dashboard should reconnect.  
+• It should fetch the latest orders from the backend.  
+• Existing orders must not disappear.  
+8.4 Printing Strategy  
+For the initial release, manual printing from Mobile Orders is recommended.  
+This means:  
+• Prepaid orders appear in Paid / Ready to Issue Token.  
+• Pay-at-Counter orders appear in Pending Payment.  
+• The cashier controls token issuance.  
+• Once payment is confirmed, the cashier triggers printing.  
+A future setting can enable automatic printing of verified prepaid orders when the local 
+print agent is connected.  
+Automatic printing must still use the same order confirmation and print -job 
+mechanisms.  
+ 
+9. SYSTEM MODULE 6 – TOKEN MANAGEMENT  
+9.1 Token Generation  
+Each confirmed order must receive a unique customer -facing token.  
+Token generation must happen on the backend.  
+Tokens must not be generated by the browser.  
+
+=== PAGE 22 ===
+9.2 Token Format  
+Recommended format:  
+001, 002, 003, 004  
+Alternatively:  
+A001, A002, A003  
+The format should be configurable.  
+9.3 Token Number Rules  
+• Tokens must be unique within the configured numbering period.  
+• Concurrent orders must not receive the same token.  
+• Pending -payment orders must not consume a token.  
+• Failed payment orders must not consume a token.  
+• Tokens should be assigned only when an order is confirmed and ready for 
+kitchen processing.  
+• Reprinting must not create a new token.  
+• Cancelled tokens must not be reassigned to another order.  
+• Token numbering may reset at the start of a business day.  
+The business -day reset must account for the food truck's operating hours and timezone.  
+9.4 Token and Internal Order ID  
+The application must maintain two identifiers:  
+Internal Order ID  
+• Unique database identifier.  
+• Used for APIs and database relationships.  
+Customer Token Number  
+• Short human -readable identifier.  
+• Printed on the receipt and KOT.  
+• Used by staff to identify the order.  
+The KOT and customer token must always reference the same order.  
+ 
+
+=== PAGE 23 ===
+10. SYSTEM MODULE 7 – THERMAL PRINTER INTEGRATION  
+10.1 Hardware Requirement  
+The initial installation requires one thermal printer.  
+Recommended specifications:  
+Specification  Requirement  
+Paper width  80mm  
+Protocol  ESC/POS compatible  
+Connectivity  Ethernet or Wi -Fi preferred  
+Auto cutter  Required  
+Partial cut  Preferred  
+Print speed  Suitable for restaurant billing  
+SDK/driver  Documented integration support  
+The exact printer model must be finalized before implementation.  
+10.2 Printer Location  
+The printer will be installed at the billing counter.  
+It will print:  
+1. Customer token/receipt.  
+2. Kitchen Order Ticket.  
+The cashier will physically distribute both slips.  
+10.3 Printing Architecture  
+A local printing service must be used because the application will be hosted remotely 
+while the printer is physically located inside the food truck.  
+Architecture:  
+Cloud Backend → Secure Connection → Local Print Agent → Thermal Printer.  
+The local print agent will:  
+• Run on a local computer or compatible device.  
+• Maintain a secure connection with the backend.  
+
+=== PAGE 24 ===
+• Receive authorized print jobs.  
+• Convert order details into ESC/POS commands.  
+• Send commands to the printer.  
+• Report print -job status.  
+• Handle printer connection failures.  
+• Maintain local pending -job information.  
+The local agent should automatically start when the computer boots.  
+10.4 Print Sequence  
+For every confirmed order:  
+Print Job 1 – Customer Token  
+Suggested content:  
+BUSINESS NAME  
+Order Token: 001  
+Order Type: DINE -IN 
+Table: 02  
+Date and Time  
+ 
+2 × Chicken Burger  
+1 × French Fries  
+1 × Coke  
+ 
+Subtotal  
+Tax 
+Total  
+Payment: UPI  
+Thank You!  
+[Cut]  
+Print Job 2 – Kitchen Order Ticket  
+Suggested content:  
+BUSINESS NAME  
+KITCHEN ORDER TICKET  
+
+=== PAGE 25 ===
+TOKEN: 001  
+ORDER TYPE: DINE -IN 
+TABLE: 02  
+ 
+2 × CHICKEN BURGER  
+EXTRA CHEESE  
+1 × FRENCH FRIES  
+1 × COKE  
+ 
+ORDER TIME: 12:30 PM  
+[Final Cut]  
+The KOT should not contain:  
+• Customer payment details.  
+• Payment gateway reference.  
+• Sensitive customer information.  
+• Unnecessary billing information.  
+10.5 Printer Configuration  
+The Admin should be able to configure:  
+• Printer name.  
+• Connection type.  
+• IP address, if network -connected.  
+• Port, if applicable.  
+• Paper width.  
+• Character encoding.  
+• Print density where supported.  
+• Cut behavior.  
+• Test print.  
+The exact printer -specific commands must be implemented according to the selected 
+model.  
+
+=== PAGE 26 ===
+10.6 Print Job Management  
+Every print job must have:  
+• Print Job ID.  
+• Order ID.  
+• Document Type (Customer Receipt / KOT).  
+• Job Status.  
+• Attempt Count.  
+• Created Timestamp.  
+• Printed Timestamp.  
+• Failure Reason.  
+Possible statuses:  
+• Pending.  
+• Printing.  
+• Printed.  
+• Failed.  
+10.7 Duplicate Printing Prevention  
+The system must prevent accidental duplicate printing.  
+Examples:  
+• Clicking the print button twice must not create two original print sequences.  
+• Repeated network messages must not create duplicate tickets.  
+• A reprint must be explicitly identified as a reprint.  
+• The original order token must remain unchanged.  
+The system should track the print sequence for each order and document type.  
+10.8 Printing Failure Handling  
+If the printer is disconnected:  
+• The order must remain confirmed.  
+• The order must remain in the database.  
+• The print job must become Failed or Pending Retry.  
+
+=== PAGE 27 ===
+• The cashier must see a visible error.  
+• The cashier must be able to retry printing.  
+• The system must not create a new order or token during retry.  
+10.9 Printer Status  
+The admin/cashier interface should show:  
+• Connected.  
+• Disconnected.  
+• Printing.  
+• Print failure.  
+• Last successful print time.  
+A printer heartbeat mechanism should be implemented.  
+ 
+11. SYSTEM MODULE 8 – ORDER MANAGEMENT  
+11.1 Unified Order Management  
+All orders must be stored in one centralized order collection/table.  
+Each order must record its source:  
+• POS / Counter.  
+• QR / Customer Website.  
+Each order must record its type:  
+• Dine -in. 
+• Takeaway.  
+This allows the business to filter and report orders without maintaining separate 
+systems.  
+11.2 Order Statuses  
+Recommended order statuses:  
+Status  Meaning  
+Pending Payment  Payment not confirmed  
+
+=== PAGE 28 ===
+Confirmed  Payment confirmed and order accepted  
+Preparing  Food preparation started  
+Ready  Food is ready  
+Completed  Order handed to customer  
+Cancelled  Order cancelled  
+A cancelled order must retain its historical details.  
+11.3 Payment Statuses  
+• Pending.  
+• Paid.  
+• Failed.  
+• Partially Refunded.  
+• Refunded.  
+11.4 Printing Statuses  
+Printing should be tracked independently:  
+• Not Requested.  
+• Pending.  
+• Printing.  
+• Partially Printed.  
+• Printed.  
+• Failed.  
+An order can be Confirmed while printing is Failed. These statuses must not be merged.  
+11.5 Order Details  
+Each order should maintain:  
+• Internal order ID.  
+• Business ID.  
+• Source.  
+• Order type.  
+
+=== PAGE 29 ===
+• Table ID, if applicable.  
+• Customer -facing token.  
+• Items.  
+• Item price snapshots.  
+• Quantities.  
+• Customizations.  
+• Special instructions.  
+• Subtotal.  
+• Discount.  
+• Tax.  
+• Grand total.  
+• Payment information.  
+• Order status.  
+• Payment status.  
+• Printing status.  
+• Created timestamp.  
+• Confirmed timestamp.  
+• Completed timestamp.  
+• Cashier ID, where applicable.  
+ 
+12. SYSTEM MODULE 9 – OPTIONAL KITCHEN DASHBOARD  
+The initial workflow relies on physically delivering printed KOTs to the kitchen.  
+However, the backend should support an optional kitchen dashboard.  
+This can be introduced without changing the main order architecture.  
+Features:  
+• Display confirmed orders.  
+• Display token numbers.  
+• Show order items and customizations.  
+
+=== PAGE 30 ===
+• Show order source.  
+• Show dine -in/table information.  
+• Mark orders as Preparing.  
+• Mark orders as Ready.  
+• Mark orders as Completed.  
+The kitchen dashboard is optional for the initial release.  
+No customer notifications are required when an order becomes Ready. Staff will 
+announce the token number verbally.  
+ 
+13. SYSTEM MODULE 10 – REPORTS AND ANALYTICS  
+13.1 Daily Sales Report  
+Display:  
+• Total orders.  
+• Confirmed orders.  
+• Cancelled orders.  
+• Gross sales.  
+• Discounts.  
+• Taxes.  
+• Net sales.  
+• Cash collections.  
+• UPI collections.  
+13.2 Payment Report  
+Display:  
+• Cash payment count.  
+• Cash collection total.  
+• UPI payment count.  
+• UPI collection total.  
+• Failed payment count.  
+
+=== PAGE 31 ===
+• Refund totals.  
+13.3 Order Source Report  
+Display:  
+• Counter orders.  
+• QR dine -in orders.  
+• QR takeaway orders.  
+13.4 Popular Items  
+Show:  
+• Item name.  
+• Quantity sold.  
+• Total revenue.  
+• Sales ranking.  
+13.5 Date Filters  
+Reports should support:  
+• Today.  
+• Yesterday.  
+• Last 7 days.  
+• Last 30 days.  
+• Custom date range.  
+13.6 Export  
+Future or optional features:  
+• Export to Excel.  
+• Export to CSV .  
+• Download PDF reports.  
+ 
+14. DATABASE DESIGN  
+14.1 Recommended Database  
+PostgreSQL is the preferred database for this project.  
+
+=== PAGE 32 ===
+Reasons:  
+• Orders and payments require strong transactional consistency.  
+• Token generation must be concurrency -safe.  
+• Payments and order records have clear relationships.  
+• Print jobs need reliable tracking.  
+• Financial reporting is easier with relational queries.  
+• PostgreSQL provides constraints, transactions and indexing.  
+Use Prisma ORM for database access and migrations.  
+14.2 Proposed Database Tables  
+1. businesses  
+Field  Type  
+id UUID  
+name  VARCHAR  
+address  TEXT  
+phone  VARCHAR  
+gstin  VARCHAR, nullable  
+timezone  VARCHAR  
+is_active  BOOLEAN  
+created_at  TIMESTAMP  
+2. users  
+Field  Type  
+id UUID  
+business_id  UUID  
+name  VARCHAR  
+email  VARCHAR  
+password_hash  VARCHAR  
+
+=== PAGE 33 ===
+role  VARCHAR  
+is_active  BOOLEAN  
+created_at  TIMESTAMP  
+3. menu_categories  
+Field  Type  
+id UUID  
+business_id  UUID  
+name  VARCHAR  
+display_order  INTEGER  
+is_active  BOOLEAN  
+4. menu_items  
+Field  Type  
+id UUID  
+business_id  UUID  
+category_id  UUID  
+name  VARCHAR  
+description  TEXT  
+price  DECIMAL  
+image_url  TEXT  
+is_available  BOOLEAN  
+tax_configuration_id  UUID  
+display_order  INTEGER  
+5. modifier_groups  
+Stores customization groups such as Add -ons.  
+6. modifier_options  
+
+=== PAGE 34 ===
+Stores customization options and their additional prices.  
+7. tables  
+Field  Type  
+id UUID  
+business_id  UUID  
+table_name  VARCHAR  
+qr_token  VARCHAR  
+is_active  BOOLEAN  
+8. orders  
+Field  Type  
+id UUID  
+business_id  UUID  
+order_number  VARCHAR  
+token_number  VARCHAR, nullable  
+source  VARCHAR  
+order_type  VARCHAR  
+table_id  UUID, nullable  
+order_status  VARCHAR  
+payment_status  VARCHAR  
+payment_method  VARCHAR, nullable  
+subtotal  DECIMAL  
+discount  DECIMAL  
+tax_amount  DECIMAL  
+total_amount  DECIMAL  
+created_at  TIMESTAMP  
+
+=== PAGE 35 ===
+confirmed_at  TIMESTAMP , nullable  
+9. order_items  
+Field  Type  
+id UUID  
+order_id  UUID  
+menu_item_id  UUID, nullable  
+item_name_snapshot  VARCHAR  
+unit_price_snapshot  DECIMAL  
+quantity  INTEGER  
+customization_snapshot  JSONB  
+special_instructions  TEXT  
+line_total  DECIMAL  
+Historical item details must remain available even if the original menu item is changed 
+or deleted.  
+10. payments  
+Field  Type  
+id UUID  
+order_id  UUID  
+payment_method  VARCHAR  
+payment_status  VARCHAR  
+amount  DECIMAL  
+gateway_reference  VARCHAR, nullable  
+transaction_reference  VARCHAR, nullable  
+verified_at  TIMESTAMP , nullable  
+recorded_by  UUID, nullable  
+
+=== PAGE 36 ===
+created_at  TIMESTAMP  
+11. kot_tickets  
+Field  Type  
+id UUID  
+order_id  UUID  
+ticket_number  VARCHAR  
+ticket_type  VARCHAR  
+created_at  TIMESTAMP  
+12. print_jobs  
+Field  Type  
+id UUID  
+order_id  UUID  
+document_type  VARCHAR  
+status  VARCHAR  
+attempt_count  INTEGER  
+failure_reason  TEXT  
+created_at  TIMESTAMP  
+printed_at  TIMESTAMP , nullable  
+13. token_sequences  
+Maintains the current token sequence for each business and business date.  
+Field  Type  
+id UUID  
+business_id  UUID  
+business_date  DATE  
+current_sequence  INTEGER  
+
+=== PAGE 37 ===
+A unique constraint must exist on business ID and business date.  
+14. audit_logs  
+Stores important system activities.  
+Examples:  
+• Login.  
+• Order created.  
+• Payment confirmed.  
+• Token generated.  
+• Order cancelled.  
+• Receipt reprinted.  
+• KOT reprinted.  
+• Menu price changed.  
+• Printer settings changed.  
+15. business_settings  
+Stores business -level configurations.  
+ 
+15. TECHNOLOGY STACK  
+The following is the recommended technology stack for implementation.  
+15.1 Frontend  
+React.js + TypeScript + Vite  
+Used for:  
+• Admin dashboard.  
+• POS interface.  
+• Mobile Orders.  
+• Kitchen dashboard.  
+• Customer QR ordering website.  
+Recommended libraries:  
+
+=== PAGE 38 ===
+Technology  Purpose  
+React  UI development  
+TypeScript  Type safety  
+Vite  Development/build tooling  
+React Router  Application navigation  
+TanStack Query  API data fetching and caching  
+Zustand  Cart and lightweight application state  
+Tailwind CSS  UI styling  
+React Hook Form  Forms  
+Zod  Form and data validation  
+Socket.IO Client  Real -time updates  
+Recharts  Sales charts  
+qrcode  QR code generation where needed  
+The customer QR website must be mobile -first and responsive.  
+The cashier POS should be optimized for tablet and desktop screens.  
+15.2 Backend  
+Node.js + TypeScript + Express.js  
+Responsibilities:  
+• Authentication.  
+• Authorization.  
+• Menu APIs.  
+• Order creation.  
+• Price calculations.  
+• Payment integration.  
+• Token generation.  
+• Print -job creation.  
+
+=== PAGE 39 ===
+• Order status updates.  
+• Reporting.  
+• Business configuration.  
+Recommended packages:  
+Package  Purpose  
+Express  REST APIs  
+Prisma  ORM  
+Zod  Request validation  
+Socket.IO  Real -time communication  
+JWT / secure sessions  Authentication  
+bcrypt or Argon2  Password hashing  
+Helmet  HTTP security  
+express -rate -limit  Rate limiting  
+Pino  Application logging  
+qrcode  QR generation  
+15.3 Database  
+PostgreSQL  
+Reasons:  
+• Transaction safety.  
+• Relational data.  
+• Financial records.  
+• Consistent order processing.  
+• Reliable token generation.  
+• Reporting.  
+Prisma will manage schema definitions, queries and migrations.  
+15.4 Real -Time Communication  
+
+=== PAGE 40 ===
+Socket.IO  
+Used for:  
+• New mobile order alerts.  
+• Order updates.  
+• Printer connection status.  
+• Print -job updates.  
+• Dashboard synchronization.  
+The system must always be able to recover current state through normal API requests if 
+a socket connection is interrupted.  
+15.5 Thermal Printer Integration  
+ESC/POS + Node.js Local Print Agent  
+The printer agent will run on a local computer inside the food truck.  
+Recommended libraries to evaluate:  
+• node -thermal -printer  
+• Printer manufacturer SDK, if available.  
+• escpos or a maintained compatible alternative, after hardware validation.  
+The final library should be selected only after testing the actual printer model.  
+15.6 Payment Integration  
+Use a payment gateway that supports:  
+• UPI.  
+• Payment initiation.  
+• Server -side payment verification.  
+• Webhooks.  
+• Transaction references.  
+• Refunds, if required.  
+Providers to evaluate:  
+• Razorpay.  
+• Cashfree Payments.  
+
+=== PAGE 41 ===
+• PhonePe Payment Gateway.  
+The provider must be selected based on merchant eligibility, fees, integration support 
+and settlement requirements.  
+15.7 Deployment  
+Recommended:  
+• Docker.  
+• Docker Compose for local development.  
+• Cloud hosting for backend and database.  
+• Vercel or another suitable hosting platform for frontend.  
+• Managed PostgreSQL in production.  
+• Object storage for menu images if needed.  
+The local printer agent will be deployed separately on the food truck's local machine.  
+ 
+16. SYSTEM ARCHITECTURE  
+16.1 High -Level Architecture  
+Customer QR Website  
+↓ 
+Node.js Backend / REST APIs  
+↓ 
+PostgreSQL Database  
+↓ 
+Unified Order Processing  
+↓ 
+Payment Verification and Order Confirmation  
+↓ 
+Token Generation  
+↓ 
+Print Job Creation  
+↓ 
+Secure Communication with Local Print Agent  
+↓ 
+Thermal Printer  
+The POS, Mobile Orders and Admin Dashboard will also communicate with the same 
+backend.  
+
+=== PAGE 42 ===
+16.2 Backend Responsibilities  
+The backend must be the single source of truth.  
+It will control:  
+• Menu data.  
+• Item pricing.  
+• Cart validation.  
+• Order creation.  
+• Payment verification.  
+• Payment confirmation.  
+• Order confirmation.  
+• Token generation.  
+• Print -job creation.  
+• Order statuses.  
+• Reporting.  
+The frontend must never directly modify critical financial or order statuses without 
+backend validation.  
+16.3 Local Printing Architecture  
+The local print agent must:  
+1. Authenticate with the backend.  
+2. Establish a secure outbound connection.  
+3. Maintain connectivity.  
+4. Receive approved print jobs.  
+5. Validate the job.  
+6. Communicate with the thermal printer.  
+7. Send print status updates.  
+8. Retry temporary failures safely.  
+9. Maintain local pending jobs if internet connectivity is lost.  
+The printer must never be exposed directly to the public internet.  
+
+=== PAGE 43 ===
+ 
+17. API REQUIREMENTS  
+All APIs should use a consistent response structure.  
+17.1 Authentication APIs  
+• POST /api/auth/login  
+• POST /api/auth/logout  
+• GET /api/auth/me  
+17.2 Menu APIs  
+• GET /api/menu  
+• GET /api/menu/categories  
+• POST /api/menu/categories  
+• PUT /api/menu/categories/:id  
+• DELETE /api/menu/categories/:id  
+• POST /api/menu/items  
+• PUT /api/menu/items/:id  
+• DELETE /api/menu/items/:id  
+• PATCH /api/menu/items/:id/availability  
+17.3 POS APIs  
+• POST /api/orders/counter  
+• GET /api/orders/:id  
+• GET /api/orders  
+• POST /api/orders/:id/confirm -payment  
+• POST /api/orders/:id/cancel  
+17.4 QR Ordering APIs  
+• GET /api/public/menu  
+• GET /api/public/table/:qrToken  
+• POST /api/public/orders  
+• POST /api/public/orders/:id/payment  
+
+=== PAGE 44 ===
+• GET /api/public/orders/:id/status  
+Public endpoints must expose only the information customers need.  
+17.5 Payment APIs  
+• POST /api/payments/initiate  
+• GET /api/payments/:id/status  
+• POST /api/payments/webhook  
+• POST /api/payments/:id/refund  
+17.6 Mobile Orders APIs  
+• GET /api/mobile -orders  
+• GET /api/mobile -orders/:id  
+• POST /api/mobile -orders/:id/confirm -payment  
+• POST /api/mobile -orders/:id/issue -token  
+• POST /api/mobile -orders/:id/cancel  
+The issue -token API must validate the order's payment status.  
+17.7 Token APIs  
+• POST /api/orders/:id/generate -token  
+• GET /api/tokens/:tokenNumber  
+Token generation should normally be part of the atomic order -confirmation workflow 
+rather than an independently callable public operation.  
+17.8 Printing APIs  
+• POST /api/print -jobs  
+• GET /api/print -jobs/pending  
+• PATCH /api/print -jobs/:id/status  
+• POST /api/print -jobs/:id/retry  
+• POST /api/orders/:id/reprint  
+17.9 Reporting APIs  
+• GET /api/reports/daily -sales  
+• GET /api/reports/payment -summary  
+
+=== PAGE 45 ===
+• GET /api/reports/order -summary  
+• GET /api/reports/top -items  
+ 
+18. SECURITY REQUIREMENTS  
+Security must be considered from the beginning.  
+18.1 Authentication  
+• Passwords must be hashed.  
+• Authentication sessions must be protected.  
+• Admin and cashier permissions must be enforced on the backend.  
+• Inactive users must not be able to log in.  
+18.2 Authorization  
+Every protected API must validate the user's role.  
+A cashier must not be able to access admin -only operations by manually calling an API.  
+18.3 Payment Security  
+• Verify gateway webhooks.  
+• Validate payment signatures.  
+• Use idempotency keys.  
+• Do not trust frontend payment status.  
+• Do not store UPI PINs, card PINs or sensitive payment credentials.  
+• Store payment references rather than unnecessary sensitive payment 
+information.  
+18.4 QR Security  
+• Use unique random QR identifiers.  
+• Avoid exposing internal database IDs.  
+• Validate table identifiers on the backend.  
+• Apply rate limits to public ordering APIs.  
+• Prevent duplicate order submissions.  
+18.5 Printer Security  
+
+=== PAGE 46 ===
+• Use authenticated printer agents.  
+• Use secure outbound connections.  
+• Do not expose printer ports publicly.  
+• Restrict printer commands to approved print jobs.  
+18.6 Audit Logging  
+Record important activities with:  
+• User ID.  
+• Activity.  
+• Entity affected.  
+• Timestamp.  
+• Relevant old/new values where appropriate.  
+• Source IP or device information where appropriate.  
+ 
+19. NON -FUNCTIONAL REQUIREMENTS  
+19.1 Performance  
+Target performance requirements:  
+• Normal dashboard API responses: under 500ms for typical requests.  
+• Menu loading: under 2 seconds under normal network conditions.  
+• Order creation: under 2 seconds excluding external payment processing.  
+• Dashboard updates: near real -time.  
+• Print -job dispatch: under 2 seconds when the printer agent is connected.  
+These are engineering targets, not guarantees under every network or hardware 
+condition.  
+19.2 Reliability  
+• No confirmed order may be lost due to a printer failure.  
+• No order may be confirmed twice due to repeated API requests.  
+• Token generation must be concurrency -safe.  
+• Print jobs must be recoverable.  
+
+=== PAGE 47 ===
+• Payment webhooks must be idempotent.  
+• Database transactions must protect payment/order/token consistency.  
+19.3 Usability  
+• Cashier should be able to create an ordinary order with minimal interactions.  
+• Customer ordering should work on mobile browsers.  
+• Menu should be easy to browse.  
+• Buttons should be touchscreen -friendly.  
+• Error messages should be understandable to non -technical staff.  
+19.4 Availability  
+The cloud application should target 99.5% monthly service availability initially, subject 
+to hosting and connectivity arrangements.  
+Local counter operation during internet outages should be treated as a separate 
+reliability capability and implemented with a controlled local mode.  
+19.5 Scalability  
+Although initially designed for one food truck, the application should support:  
+• Multiple businesses.  
+• Multiple locations.  
+• Independent menus.  
+• Independent token sequences.  
+• Independent printer agents.  
+• Business -level reporting.  
+ 
+20. ERROR HANDLING AND EDGE CASES  
+The system must explicitly handle the following cases.  
+Scenario  Expected behaviour  
+Printer disconnected  Keep order confirmed and show print failure  
+Internet disconnected  Preserve pending jobs and recover safely  
+Customer clicks Place Order twice  Prevent duplicate order creation  
+
+=== PAGE 48 ===
+Payment webhook received twice  Process payment only once  
+Customer payment succeeds but 
+browser closes  Recover order through backend payment 
+records  
+Menu item becomes unavailable during 
+checkout  Reject or require cart update  
+Cashier clicks Confirm twice  Idempotency prevents duplicate 
+confirmation  
+Printer prints receipt but fails before KOT  Mark partial printing and allow KOT retry  
+Cashier accidentally requests reprint  Clearly mark duplicate as REPRINT  
+Two customers order simultaneously  Generate different tokens  
+QR code belongs to inactive table  Reject order  
+Cashier cancels an order  Require reason and record audit entry  
+Payment succeeds but order 
+confirmation fails  Reconcile payment and order safely  
+Print agent reconnects  Fetch outstanding authorized print jobs  
+Token sequence resets  Do not create collisions with previous 
+business dates  
+Important: Partial Printing  
+Suppose the printer successfully prints the customer receipt but disconnects before 
+printing the KOT.  
+The system must not assume that both were printed.  
+It must track the two documents independently.  
+The cashier should see:  
+• Customer receipt: Printed.  
+• KOT: Failed.  
+The cashier can then reprint only the KOT.  
+ 
+21. ACCEPTANCE CRITERIA  
+
+=== PAGE 49 ===
+The project will be considered ready for initial production when the following tests pass.  
+21.1 Counter POS  
+• Cashier can log in.  
+• Cashier can view the menu.  
+• Cashier can add and remove items.  
+• Cashier can change quantities.  
+• Cashier can apply supported customizations.  
+• Cashier can select dine -in or takeaway.  
+• Cashier can record cash or UPI payment.  
+• Order is stored correctly.  
+• A unique token is generated.  
+• Customer receipt prints.  
+• KOT prints immediately afterwards.  
+• Printer cuts between the two slips.  
+21.2 QR Ordering  
+• Customer can scan a table QR.  
+• Correct table is identified.  
+• Customer can view menu.  
+• Customer can add products.  
+• Customer can modify quantities.  
+• Customer can select customizations.  
+• Customer can select prepaid UPI.  
+• Customer can select Pay at Counter.  
+• Order is saved in the database.  
+• Both order types appear in Mobile Orders.  
+21.3 Prepaid UPI  
+• Customer can initiate payment.  
+• Successful payment is verified server -side.  
+
+=== PAGE 50 ===
+• Failed payment does not confirm the order.  
+• Successful payment appears in Paid / Ready to Issue Token.  
+• Cashier can issue a token and print.  
+• Duplicate payment notifications do not create duplicate orders.  
+21.4 Pay at Counter  
+• Order is saved with Pending Payment.  
+• No token is generated.  
+• No KOT is printed.  
+• Order appears in Pending Payment.  
+• Cashier can select payment method.  
+• Cashier confirms payment.  
+• Token is generated.  
+• Both slips print.  
+21.5 Printing  
+• Printer connects successfully.  
+• Correct paper width is used.  
+• Customer receipt layout is correct.  
+• KOT layout is correct.  
+• Cut occurs between slips.  
+• Reprints work.  
+• Printer disconnection is handled.  
+• Partial printing is handled.  
+• Duplicate print requests are controlled.  
+21.6 Reporting  
+• Sales totals are correct.  
+• Cash and UPI totals are correct.  
+• Counter and QR orders are distinguished.  
+• Dine -in and takeaway orders are distinguished.  
+
+=== PAGE 51 ===
+• Cancelled orders are reported correctly.  
+ 
+22. DEVELOPMENT ROADMAP  
+The implementation should be divided into milestones.  
+Milestone 1 – Project Foundation  
+• Create project repositories.  
+• Set up React frontend.  
+• Set up Node.js backend.  
+• Configure PostgreSQL.  
+• Configure Prisma.  
+• Set up authentication.  
+• Create initial database migrations.  
+• Configure Docker development environment.  
+Deliverable:  Working application foundation.  
+Milestone 2 – Admin and Menu  
+• Admin dashboard.  
+• Category management.  
+• Item management.  
+• Customizations.  
+• Business settings.  
+• Availability controls.  
+Deliverable:  Fully manageable digital menu.  
+Milestone 3 – POS  
+• Cashier interface.  
+• Menu selection.  
+• Cart.  
+• Pricing calculations.  
+• Dine -in/takeaway selection.  
+
+=== PAGE 52 ===
+• Payment recording.  
+• Order creation.  
+Deliverable:  Working counter POS without printer integration.  
+Milestone 4 – Token and Printer  
+• Select actual printer hardware.  
+• Test ESC/POS compatibility.  
+• Build local print agent.  
+• Configure secure connection.  
+• Implement receipt template.  
+• Implement KOT template.  
+• Implement cutting.  
+• Implement print -job status.  
+• Implement reprints.  
+Deliverable:  Fully functioning counter billing and printing.  
+Milestone 5 – Kitchen Order Management  
+• Unified order list.  
+• Order statuses.  
+• Order details.  
+• Optional kitchen dashboard.  
+• Order history.  
+Deliverable:  Complete order -management workflow.  
+Milestone 6 – QR Ordering  
+• Generate table QR codes.  
+• Build mobile menu.  
+• Build customer cart.  
+• Build checkout.  
+• Implement order submission.  
+• Implement takeaway QR.  
+
+=== PAGE 53 ===
+• Integrate shared backend.  
+Deliverable:  Customer self -ordering system.  
+Milestone 7 – Mobile Orders and Payments  
+• Mobile Orders dashboard.  
+• Pending Payment section.  
+• Paid / Ready to Issue Token section.  
+• Payment gateway integration.  
+• Payment webhook verification.  
+• Payment confirmation.  
+• Token issuance.  
+• Printing integration.  
+Deliverable:  Complete QR ordering and payment workflow.  
+Milestone 8 – Reports and Testing  
+• Sales reports.  
+• Payment reports.  
+• Order source reports.  
+• Audit logs.  
+• Error handling.  
+• Printer failure tests.  
+• Concurrent order tests.  
+• Payment failure tests.  
+• Security tests.  
+Deliverable:  Production -ready initial release.  
+Milestone 9 – Deployment and Training  
+• Configure production database.  
+• Deploy backend.  
+• Deploy frontend.  
+• Configure payment gateway.  
+
+=== PAGE 54 ===
+• Install local print agent.  
+• Connect thermal printer.  
+• Generate and print QR codes.  
+• Train cashier and kitchen staff.  
+• Perform live trial orders.  
+Deliverable:  Operational food truck system.  
+ 
+23. FUTURE ENHANCEMENTS  
+The architecture should allow the following features to be added later.  
+Business Operations  
+• Inventory management.  
+• Ingredient -level stock management.  
+• Low -stock alerts.  
+• Purchase management.  
+• Supplier management.  
+• Recipe costing.  
+Customer Experience  
+• Loyalty points.  
+• Customer accounts.  
+• Repeat orders.  
+• Customer feedback.  
+• Offers and coupons.  
+• Order -ready notifications.  
+Restaurant Operations  
+• Multiple printers.  
+• Separate kitchen stations.  
+• Kitchen display system.  
+• Multiple branches.  
+
+=== PAGE 55 ===
+• Multiple food trucks.  
+• Staff attendance.  
+Business Intelligence  
+• Advanced analytics.  
+• Profitability reports.  
+• Item -wise margin analysis.  
+• Peak -hour analysis.  
+• Sales forecasting.  
+Automation  
+• Automatic printing of verified prepaid QR orders.  
+• Automated daily reports.  
+• WhatsApp business integrations.  
+• Automated payment reconciliation.  
+ 
+24. ASSUMPTIONS AND DEPENDENCIES  
+The initial specification assumes:  
+1. The food truck operates from one business location.  
+2. There is one billing counter.  
+3. There is one thermal printer.  
+4. The printer supports ESC/POS or provides a suitable SDK.  
+5. The printer has an auto -cutter with the required partial -cut functionality.  
+6. A local computer or compatible device can run the print agent.  
+7. The food truck has internet connectivity for cloud operations and QR ordering.  
+8. Customers can access the internet through mobile data or Wi -Fi. 
+9. The business has a merchant UPI/payment gateway arrangement for prepaid 
+orders.  
+10. Cashier staff will physically verify payments made directly at the counter.  
+11. Kitchen staff will receive printed KOT slips physically.  
+
+=== PAGE 56 ===
+12. The business does not require customer order -ready notifications.  
+13. The owner will provide menu details, prices, logo and business information.  
+Dependencies:  
+• Final thermal printer model.  
+• Payment gateway merchant account.  
+• Hosting account.  
+• Domain name.  
+• Menu data.  
+• Business branding.  
+• Applicable tax configuration.  
+ 
+25. IMPORTANT IMPLEMENTATION DECISIONS  
+Before starting development, the following decisions must be finalized.  
+Decision  Recommended choice  
+Frontend  React + TypeScript + Vite  
+Backend  Node.js + TypeScript + Express  
+Database  PostgreSQL  
+ORM  Prisma  
+Real -time updates  Socket.IO  
+Printer communication  Node.js local print agent + ESC/POS  
+Printer connection  Ethernet/Wi -Fi preferred  
+Printer size  80mm  
+Payment  UPI payment gateway  
+QR generation  Node.js QR library  
+Deployment  Docker + cloud hosting  
+Authentication  Role -based access  
+
+=== PAGE 57 ===
+Token generation  Transaction -safe daily sequence  
+Mobile ordering  Responsive web application  
+Initial mobile order printing  Cashier -triggered  
+Future prepaid printing  Configurable automatic printing  
+ 
+26. FINAL PRODUCT DEFINITION  
+The final product will be a unified food truck management platform with two 
+independent order -entry interfaces and a common order -processing system.  
+Counter POS  
+Allows staff to manually enter customer orders, collect payments, generate tokens and 
+print receipts and KOTs.  
+Customer QR Ordering  
+Allows customers to scan QR codes, browse the menu, place dine -in or takeaway 
+orders and pay through prepaid UPI or at the counter.  
+Mobile Orders Management  
+Allows the cashier to monitor incoming QR orders, confirm counter payments, issue 
+tokens and initiate printing.  
+Centralized Order Management  
+Maintains all counter and QR orders in one database with consistent order, payment, 
+token and print statuses.  
+Single Thermal Printer  
+Prints the customer token and KOT consecutively, cutting the paper between them.  
+Admin Dashboard  
+Allows the owner to manage the menu, prices, business settings, users, orders, 
+payments, reports and printer configuration.  
+The product must prioritize simplicity, reliability, fast order processing, payment 
+accuracy and uninterrupted printing.  
+The initial release should focus on delivering a dependable single -location food truck 
+POS system. The underlying architecture should be sufficiently modular to support 
+multiple locations and additional restaurant -management capabilities in future 
+releases . 
+
+=== PAGE 58 ===
+Upd ates  
+QR Ordering, Order Type Selection & PhonePe Payment Gateway  
+Related Document:  Food Truck POS, QR Self -Ordering & Kitchen Order Ticket 
+Management System – PRD Version 1.0  
+Purpose:  This addendum introduces additional functional requirements and clarifies 
+the ordering and payment workflows. The requirements in this document supersede any 
+conflicting requirements in PRD Version 1.0.  
+ 
+1. QR CODE SYSTEM – UPDATED REQUIREMENT  
+1.1 Single QR Code Per Table  
+The system must generate and maintain only one QR code for each table.  
+The same QR code must support both:  
+• Dine -in orders.  
+• Takeaway orders.  
+There must not be separate QR codes for dine -in and takeaway.  
+For example:  
+Table  QR Code  
+Table 01  One unique QR  
+Table 02  One unique QR  
+Table 03  One unique QR  
+Table 04  One unique QR  
+Each QR code will contain a unique table identifier or secure QR token.  
+Example:  
+https://foodtruck.example/order/t/unique -table -token  
+When a customer scans the QR code, the application should identify the associated 
+table.  
+However, the system must not immediately assume that the customer wants to dine in.  
+The customer must explicitly select the order type before submitting the order.  
+
+=== PAGE 59 ===
+1.2 Customer QR Ordering Workflow  
+The updated customer ordering flow must be:  
+1. Customer scans the table QR code.  
+2. Customer is redirected to the food truck's mobile ordering website.  
+3. The system identifies the table associated with the QR code.  
+4. Customer views the digital menu.  
+5. Customer selects food items.  
+6. Customer adds items to the cart.  
+7. Customer reviews the cart.  
+8. Customer clicks the Continue / Proceed button.  
+9. A mandatory order -type selection popup appears.  
+10. Customer selects either Dine -in or Takeaway.  
+11. Customer proceeds to payment selection.  
+12. Customer selects UPI or Pay at Counter.  
+13. Customer confirms the order or proceeds with payment.  
+The order type must be captured before the final order submission.  
+1.3 Order -Type Selection Popup  
+The popup must appear one step before the customer submits the order.  
+Suggested interface:  
+How would you like to receive your order?  
+• Dine -in 
+• Takeaway  
+Both options should be presented as selectable cards or buttons.  
+Requirements:  
+• Customer must select at least one option.  
+• The customer must not be able to proceed without selecting an option.  
+• Dine -in and Takeaway must be mutually exclusive for a single order.  
+• The popup must not automatically select an option.  
+
+=== PAGE 60 ===
+• Customer must explicitly confirm their selection.  
+• Once selected, the order type must be displayed on the checkout page.  
+• Customer should be able to go back and change the selection before submitting 
+the order.  
+If the customer closes the popup without selecting an option, the order must not be 
+submitted.  
+1.4 Table Identification Rules  
+Even when the customer selects Takeaway after scanning a table QR code, the system 
+should retain the original QR/table reference for traceability.  
+The system must maintain two separate pieces of information:  
+• tableId : The table associated with the scanned QR code.  
+• orderType: The customer's actual selection, either dine_in or takeaway.  
+For Takeaway orders initiated from a table QR:  
+• Order type must be Takeaway.  
+• The original scanned table reference may be retained as the originating table.  
+• The order must not be treated as an active dine -in table order.  
+• The customer -facing token and KOT must clearly display Takeaway.  
+This distinction is important because the QR code identifies the ordering location, not 
+necessarily the customer's selected service type.  
+ 
+2. CUSTOMER PAYMENT OPTIONS – PHONEPE PAYMENT GATEWAY  
+2.1 Payment Gateway  
+The application must use PhonePe Payment Gateway  for online payments.  
+No other online payment gateway is required in the initial release.  
+Phone ordering must provide exactly two payment options:  
+1. UPI.  
+2. Pay at Counter.  
+The customer must not see Cash, Card or other payment options in the QR ordering 
+checkout.  
+
+=== PAGE 61 ===
+Cash and UPI can still be used as payment methods at the physical counter, based on 
+cashier confirmation.  
+2.2 Customer Checkout Payment Selection  
+After the customer selects Dine -in or Takeaway, the system must display the payment 
+options.  
+Suggested interface:  
+Select Payment Method  
+Option 1 – Pay Online (UPI)  
+• Customer selects UPI.  
+• System initiates a PhonePe payment request.  
+• Customer completes the payment through the PhonePe -supported payment 
+flow.  
+• Backend verifies the payment.  
+• Upon successful verification, the order becomes eligible for token issuance.  
+Option 2 – Pay at Counter  
+• Customer selects Pay at Counter.  
+• No online payment is initiated.  
+• Order is saved with Pending Payment status.  
+• Order appears in the cashier's Mobile Orders dashboard.  
+• No token is generated.  
+• No KOT is printed.  
+• Cashier confirms payment after collecting it at the counter.  
+2.3 PhonePe Integration Workflow  
+The integration must use PhonePe's official Payment Gateway APIs and documentation.  
+Expected workflow:  
+1. Customer selects UPI.  
+2. Frontend sends a payment initiation request to the backend.  
+3. Backend validates the order and calculates the final amount.  
+4. Backend creates a unique payment transaction reference.  
+
+=== PAGE 62 ===
+5. Backend initiates the PhonePe payment request.  
+6. PhonePe returns the payment flow details.  
+7. Customer completes the payment.  
+8. PhonePe communicates the payment result.  
+9. Backend verifies the payment using the official verification/status API and 
+webhook mechanisms supported by the selected PhonePe integration.  
+10. Successful payment is recorded in the database.  
+11. Order payment status becomes Paid.  
+12. Order becomes eligible for token generation.  
+13. Order appears in the Paid / Ready to Issue Token section of Mobile Orders.  
+Important technical requirements:  
+• PhonePe merchant credentials must be stored securely on the backend.  
+• Frontend must never receive merchant secrets.  
+• Payment success must never be determined solely by a frontend redirect.  
+• Webhook signatures must be validated according to PhonePe's documentation.  
+• Payment status must be independently verifiable through the payment status 
+API.  
+• Duplicate webhook requests must not create duplicate payments or orders.  
+• Payment requests must use unique merchant transaction identifiers.  
+• Failed or pending payments must not enter the confirmed kitchen workflow.  
+• The backend must handle delayed payment confirmations.  
+2.4 Payment Failure Handling  
+If payment fails:  
+• Order must remain unconfirmed.  
+• Payment status must be Failed, or Pending if the result is not yet definitive.  
+• No token should be issued.  
+• No KOT should be printed.  
+• Customer should receive an understandable failure/pending message.  
+
+=== PAGE 63 ===
+• Customer should be allowed to retry according to the payment gateway's 
+supported retry flow.  
+If payment succeeds but the customer closes the browser before returning to the 
+ordering website, the backend must still be able to recover the payment status.  
+ 
+3. POS COUNTER – ORDER TYPE SELECTION  
+3.1 Updated Counter Ordering Workflow  
+The POS counter must also provide Dine -in and Takeaway selection.  
+The order type must not be permanently fixed before the cashier completes item 
+selection.  
+Updated workflow:  
+1. Cashier opens POS.  
+2. Cashier selects food items.  
+3. Cashier adjusts quantities and customizations.  
+4. System calculates the total amount.  
+5. Cashier selects the payment method.  
+6. Cashier verifies that payment has been received.  
+7. Cashier clicks the Confirm / Generate Bill button.  
+8. A mandatory order -type selection popup appears.  
+9. Cashier selects Dine -in or Takeaway.  
+10. If Dine -in, the system allows the cashier to select the relevant table where 
+applicable.  
+11. Cashier confirms the order type.  
+12. Backend validates the order and payment.  
+13. Backend creates the confirmed order.  
+14. Backend generates the token.  
+15. Backend creates the customer receipt and KOT print jobs.  
+16. Printer prints both documents consecutively.  
+17. Paper is cut between the two documents.  
+
+=== PAGE 64 ===
+3.2 POS Order -Type Selection Popup  
+Suggested interface:  
+Select Order Type  
+[ DINE -IN ] 
+[ TAKEAWAY ]  
+Requirements:  
+• Both options must be displayed.  
+• No option should be automatically selected.  
+• Cashier must select one option.  
+• The cashier cannot proceed without selection.  
+• Only one order type can be selected per order.  
+• Cashier can go back and change the selection before final confirmation.  
+• The selected order type must be saved in the database.  
+• The selected order type must appear on both the customer token and KOT.  
+3.3 Dine -in Table Selection  
+If the cashier selects Dine -in: 
+• The POS should allow selection of an available table.  
+• Table selection should be configurable depending on whether the food truck 
+uses table numbers.  
+• If the business has table management enabled, table selection should be 
+mandatory for dine -in counter orders.  
+• The selected table number must appear on the customer token and KOT.  
+If the cashier selects Takeaway:  
+• Table selection must not be required.  
+• The order must be marked as Takeaway.  
+ 
+4. UPDATED UNIFIED ORDER TYPE LOGIC  
+The order type must be selected independently for every order, regardless of the 
+ordering channel.  
+
+=== PAGE 65 ===
+Ordering Channel  Order Type Selection  
+Counter POS  Cashier selects Dine -in or Takeaway  
+Table QR  Customer selects Dine -in or Takeaway  
+Takeaway counter QR, if 
+introduced  Customer selects according to the configured QR 
+flow  
+The order type must be stored as a standardized backend value:  
+• dine_in  
+• takeaway  
+The backend must not use separate order collections for Dine -in and Takeaway.  
+Both order types must be saved in the same orders table.  
+ 
+5. UPDATED ORDER DATA STRUCTURE  
+The orders table must support the new order -type and QR -origin requirements.  
+Recommended fields:  
+Field  Type  Description  
+id UUID  Internal order identifier  
+business_id  UUID  Business reference  
+order_number  VARCHAR  Internal human -readable order reference  
+token_number  VARCHAR, nullable  Customer token  
+source  VARCHAR  pos or qr  
+order_type  VARCHAR  dine_in or takeaway  
+table_id  UUID, nullable  Original associated table  
+qr_token_id  UUID, nullable  QR identifier used to initiate the order  
+payment_method  VARCHAR, nullable  upi, cash, or null  
+payment_status  VARCHAR  Payment status  
+order_status  VARCHAR  Order processing status  
+
+=== PAGE 66 ===
+subtotal  DECIMAL  Item subtotal  
+discount  DECIMAL  Discount amount  
+tax_amount  DECIMAL  Tax amount  
+total_amount  DECIMAL  Final payable amount  
+created_at  TIMESTAMP  Order creation time  
+confirmed_at  TIMESTAMP , nullable  Confirmation time  
+For QR orders, the source must be qr.  
+For POS orders, the source must be pos.  
+The selected order type must always be stored independently of the source.  
+The table reference must be preserved for orders originating from a table QR, even when 
+the customer selects Takeaway, so the business can distinguish the original QR location 
+from the actual order type.  
+ 
+6. UPDATED PRINTING REQUIREMENTS  
+The single thermal printer must print the selected order type on both slips.  
+6.1 Customer Token  
+Example – Dine -in: 
+FOOD TRUCK  
+TOKEN NO: 025  
+ORDER TYPE: DINE -IN 
+TABLE: 03  
+ 
+2 x Chicken Burger  
+1 x French Fries  
+1 x Coke  
+ 
+TOTAL: ₹550  
+PAYMENT: UPI  
+
+=== PAGE 67 ===
+THANK YOU!  
+6.2 Kitchen Order Ticket  
+Example – Takeaway:  
+FOOD TRUCK  
+KITCHEN ORDER TICKET  
+TOKEN NO: 026  
+ORDER TYPE: TAKEAWAY  
+ 
+2 x Chicken Burger  
+Extra Cheese  
+1 x French Fries  
+ 
+ORDER TIME: 01:30 PM  
+6.3 Printing Rules  
+• The selected order type must appear clearly on both documents.  
+• For Dine -in orders, table number must appear where available.  
+• For Takeaway orders, the document must clearly show TAKEAWAY .  
+• The customer token must print first.  
+• The KOT must print immediately after the customer token.  
+• The printer must cut between the two documents.  
+• Both documents must reference the same token number.  
+• Reprints must retain the original order type and token number.  
+ 
+7. UPDATED MOBILE ORDERS DASHBOARD  
+The Mobile Orders dashboard remains the central management page for QR orders.  
+It must now also display the selected order type.  
+Each order card should display:  
+• Order reference.  
+
+=== PAGE 68 ===
+• Order time.  
+• Order type (Dine -in / Takeaway).  
+• Original table reference, where applicable.  
+• Payment method.  
+• Payment status.  
+• Items.  
+• Quantities.  
+• Customizations.  
+• Total amount.  
+Example:  
+Order #QR025  
+Order Type: Dine -in 
+Table: 03  
+Payment: UPI – Paid  
+Items:  
+• 2 x Chicken Burger  
+• 1 x French Fries  
+Total: ₹450  
+Action: Generate Token & Print.  
+Another example:  
+Order #QR026  
+Order Type: Takeaway  
+Origin: Table 02 QR  
+Payment: Pay at Counter – Pending  
+Items:  
+• 1 x Veg Burger  
+• 1 x Coke  
+Total: ₹250  
+
+=== PAGE 69 ===
+Action: Confirm Payment & Generate Token.  
+ 
+8. UPDATED API REQUIREMENTS  
+The following API requirements must be added or updated.  
+8.1 QR Ordering  
+GET /api/public/table/:qrToken  
+Must return the validated table details associated with the QR code.  
+POST /api/public/orders  
+Must accept:  
+• QR token.  
+• Selected items.  
+• Customizations.  
+• Order type.  
+• Payment method.  
+• Special instructions.  
+The backend must validate the selected order type and payment method.  
+8.2 Payment Initiation  
+POST /api/payments/phonepe/initiate  
+Responsibilities:  
+• Validate the order.  
+• Calculate the final amount.  
+• Create a unique transaction ID.  
+• Initiate the PhonePe payment request.  
+• Return the payment flow details.  
+POST /api/payments/phonepe/webhook  
+Responsibilities:  
+• Receive PhonePe payment notifications.  
+• Validate webhook authenticity.  
+
+=== PAGE 70 ===
+• Update payment status.  
+• Prevent duplicate processing.  
+GET /api/payments/phonepe/:transactionId/status  
+Responsibilities:  
+• Check the current payment status using the official PhonePe status mechanism.  
+8.3 POS Order Confirmation  
+POST /api/orders/counter/confirm  
+Must accept:  
+• Cart items.  
+• Payment method.  
+• Verified payment details where applicable.  
+• Selected order type.  
+• Table ID if dine -in. 
+The backend must validate the payment and order type before generating the token.  
+8.4 Mobile Order Confirmation  
+POST /api/mobile -orders/:id/confirm -payment  
+Must accept:  
+• Payment method (cash or upi).  
+• Counter payment reference, if available.  
+• Cashier ID from authenticated session.  
+POST /api/mobile -orders/:id/issue -token  
+Must:  
+• Verify that payment is successful.  
+• Verify that the order is eligible for confirmation.  
+• Generate a unique token.  
+• Update order status.  
+• Create the required print jobs.  
+
+=== PAGE 71 ===
+These operations should be implemented transactionally and protected against 
+duplicate requests.  
+ 
+9. UPDATED BUSINESS RULES  
+The following rules are mandatory.  
+1. There must be only one QR code per table.  
+2. The QR code must identify the table, not permanently determine the order type.  
+3. Customer must select Dine -in or Takeaway before submitting a QR order.  
+4. The order -type popup must require an explicit selection.  
+5. Counter staff must also select Dine -in or Takeaway before final order 
+confirmation and printing.  
+6. The POS must show the order -type popup before final confirmation.  
+7. Both ordering channels must use the same backend and database.  
+8. The QR ordering payment options must be limited to UPI and Pay at Counter.  
+9. Online UPI payments must be processed through PhonePe Payment Gateway.  
+10. Cashier -verified UPI and Cash payments must be supported at the physical 
+counter.  
+11. A Pay -at-Counter QR order must not receive a token before payment 
+confirmation.  
+12. No KOT must be printed for an unpaid Pay -at-Counter order.  
+13. A successfully paid prepaid QR order must be eligible for token issuance.  
+14. The cashier can manually trigger printing for mobile orders.  
+15. The customer token must print before the KOT.  
+16. The printer must cut between the two documents.  
+17. Both documents must display the selected order type.  
+18. Dine -in orders must display the table number where available.  
+19. Takeaway orders must clearly display TAKEAWAY .  
+20. Changing the order type before final confirmation must update the order data 
+and both print documents.  
+
+=== PAGE 72 ===
+ 
+10. UPDATED ACCEPTANCE CRITERIA  
+QR Code  
+• Each table has exactly one active QR code.  
+• Scanning the QR identifies the correct table.  
+• Both Dine -in and Takeaway can be selected from the same QR.  
+• The selection popup appears before order submission.  
+• Customer cannot proceed without selecting an order type.  
+PhonePe Payment  
+• UPI payment uses PhonePe Payment Gateway.  
+• Pay at Counter is the only other QR payment option.  
+• Payment verification occurs on the backend.  
+• Failed payments do not generate tokens.  
+• Successful payments are recorded correctly.  
+• Duplicate webhook events do not create duplicate payments.  
+POS  
+• Cashier can add items and prepare the cart.  
+• Payment method can be selected.  
+• Order -type popup appears before final confirmation.  
+• Cashier must choose Dine -in or Takeaway.  
+• Dine -in table selection works where enabled.  
+• Takeaway orders do not require table selection.  
+• Selected order type is stored correctly.  
+Printing  
+• Customer token prints first.  
+• KOT prints second.  
+• Printer cuts between both documents.  
+• Both slips display the correct order type.  
+
+=== PAGE 73 ===
+• Both slips have the same token number.  
+• Table number appears for applicable dine -in orders.  
+• Takeaway is clearly identified.  
+• Failed printing can be retried without generating a new token.  
+ 
+11. DOCUMENT CHANGE SUMMARY  
+The following sections of PRD Version 1.0 must be updated to reflect this addendum:  
+Original PRD Section  Update  
+Section 6 – Customer QR Self -
+Ordering  One QR per table; mandatory order -type popup  
+Section 7 – Payment Management  PhonePe Gateway; only UPI and Pay at Counter 
+for QR  
+Section 8 – Mobile Orders  Display order type and origin table  
+Section 9 – Token Management  Token issuance follows updated confirmation 
+workflow  
+Section 10 – Printer Integration  Print order type on both slips  
+Section 11 – Order Management  Store order type separately from source  
+Section 14 – Database Design  Update orders and QR -related fields  
+Section 17 – API Requirements  Add PhonePe and updated confirmation 
+endpoints  
+Section 21 – Acceptance Criteria  Add updated QR, payment, POS and printing tests  
+ 
+
+=== PAGE 74 ===
+ 
+
+
+=== PAGE 75 ===
+ 
+
+
+=== PAGE 76 ===
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 77 ===
+END OF PRODUCT REQUIREMENTS DOCUMENT  
+Version: 1.0  
+Status: Ready for technical design and implementation planning  
+Primary Deliverable: Unified Food Truck POS + QR Self -Ordering + Payment 
+Management + Token and KOT Printing System  
+ 
+ 
+Important implementation notes  
+There are three technical details I would particularly emphasize to the 
+development team:  
+1. One QR, two order types: The QR identifies the table. The customer 
+independently chooses Dine -in or Takeaway. Keep tableId, qrTokenId and 
+orderType separate in the database.  
+2. PhonePe integration: Use PhonePe's current official Payment Gateway 
+integration documentation when implementing the checkout. The exact API flow, 
+SDK and payment modes should be finalized against the merchant account's 
+enabled capabilities. The customer -facing payment choices remain UPI and Pay at 
+Counter.  
+3. POS popup timing: The cashier selects payment method, then chooses Dine -in 
+or Takeaway in the final confirmation popup. No token or print job should be 
+generated until both are confirmed.  
+One small recommendation: Make the order -type selection popup visually 
+prominent, with two large cards rather than a small dropdown. This is an important 
+operational choice, and the cashier or customer should not accidentally skip it.  
+ 
