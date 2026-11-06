@@ -27,6 +27,7 @@ import reportRoutes from './routes/report.routes';
 import tableRoutes from './routes/table.routes';
 import userRoutes from './routes/user.routes';
 import settingsRoutes from './routes/settings.routes';
+import * as orderService from './services/order.service';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -113,6 +114,8 @@ app.use(
     maxAge: '7d',
     setHeaders: (res) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     }
   })
 );
@@ -170,6 +173,21 @@ httpServer.listen(PORT, () => {
     }
   }, 45000);
   keepWarmTimer.unref();
+
+  // Auto-cancel stale pending payment orders from previous days at startup
+  orderService.autoCancelStalePendingPaymentOrders().catch((err) => {
+    logger.error({ err }, 'Initial auto-cancel pending orders error');
+  });
+
+  // Periodically check and auto-cancel stale pending payment orders every 5 minutes
+  const pendingOrdersCleanupTimer = setInterval(async () => {
+    try {
+      await orderService.autoCancelStalePendingPaymentOrders();
+    } catch (err) {
+      logger.error({ err }, 'Background auto-cancel pending orders error');
+    }
+  }, 5 * 60 * 1000);
+  pendingOrdersCleanupTimer.unref();
 });
 
 // Graceful Shutdown

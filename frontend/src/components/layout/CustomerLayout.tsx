@@ -1,16 +1,19 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Utensils } from 'lucide-react';
+import { Utensils, Clock, AlertCircle } from 'lucide-react';
+import { OrderingStatus } from '@/types';
 
 interface CustomerLayoutProps {
   businessName?: string;
   tableName?: string;
+  orderingStatus?: OrderingStatus | null;
   children?: React.ReactNode;
 }
 
 export const CustomerLayout: React.FC<CustomerLayoutProps> = ({
   businessName = 'Food Truck Express',
   tableName,
+  orderingStatus,
   children,
 }) => {
   return (
@@ -35,6 +38,24 @@ export const CustomerLayout: React.FC<CustomerLayoutProps> = ({
           </div>
         )}
       </header>
+
+      {/* Operating Status Alert Banner */}
+      {orderingStatus && !orderingStatus.isOpen && (
+        <div
+          className={`px-4 py-2.5 text-xs font-medium flex items-center gap-2 border-b transition-all shadow-inner ${
+            orderingStatus.reason === 'BEFORE_HOURS'
+              ? 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'
+              : 'bg-[#FBE8E8] text-[#8C232C] border-[#F5C2C7]'
+          }`}
+        >
+          {orderingStatus.reason === 'BEFORE_HOURS' ? (
+            <Clock className="w-4 h-4 shrink-0 text-[#B45309]" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0 text-[#8C232C]" />
+          )}
+          <span className="leading-snug">{orderingStatus.bannerText}</span>
+        </div>
+      )}
 
       {/* Main Screen Content */}
       <main className="flex-1 pb-20">

@@ -14,8 +14,9 @@ export const OrderConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Safely clear cart now that confirmation page has mounted
+  // Safely clear cart now that confirmation page has mounted and reset scroll to top
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
     useCartStore.getState().clearCart();
   }, []);
 

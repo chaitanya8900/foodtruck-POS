@@ -1,7 +1,8 @@
-import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import useCartStore from '@/store/cart';
+import { OrderingStatus } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
@@ -9,6 +10,14 @@ import EmptyState from '@/components/ui/EmptyState';
 export const CustomerCartPage: React.FC = () => {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
+  const context = useOutletContext<{ orderingStatus?: OrderingStatus }>() || {};
+  const orderingStatus = context.orderingStatus;
+  const isOrderingOpen = orderingStatus ? orderingStatus.isOpen : true;
+  const closedButtonText = orderingStatus?.closedButtonText || 'Sorry, we are closed today';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, []);
 
   const {
     items,
@@ -180,20 +189,36 @@ export const CustomerCartPage: React.FC = () => {
       {/* Always Floating Bottom Proceed Button */}
       <div className="fixed bottom-0 inset-x-0 max-w-md mx-auto p-4 z-40 bg-gradient-to-t from-[#F8EFE6] via-[#F8EFE6]/95 to-transparent pt-6 pointer-events-none">
         <div className="pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => navigate(`/order/t/${qrToken}/order-type`)}
-            className="w-full bg-[#3A0A0F] hover:bg-[#5B0F1B] active:scale-[0.98] text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between transition-all border border-white/10"
-          >
-            <div className="text-left">
-              <p className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Total Amount</p>
-              <p className="text-lg font-black text-white font-mono leading-tight">{formatCurrency(total)}</p>
+          {isOrderingOpen ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/order/t/${qrToken}/order-type`)}
+              className="w-full bg-[#3A0A0F] hover:bg-[#5B0F1B] active:scale-[0.98] text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between transition-all border border-white/10"
+            >
+              <div className="text-left">
+                <p className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Total Amount</p>
+                <p className="text-lg font-black text-white font-mono leading-tight">{formatCurrency(total)}</p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/15 px-4 py-2 rounded-xl text-sm font-bold text-white tracking-wide border border-white/20">
+                <span>Proceed to Order Type</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </div>
+            </button>
+          ) : (
+            <div className="w-full bg-white/95 backdrop-blur-md border border-[#EAD8C0] p-3.5 sm:p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-3 transition-all">
+              <div className="text-left shrink-0">
+                <p className="text-xl font-black text-[#1E293B] font-mono leading-tight">{formatCurrency(total)}</p>
+                <p className="text-xs font-bold text-[#8C232C] mt-0.5">Total Bill</p>
+              </div>
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed bg-[#A86B6B] text-white px-5 py-3 rounded-full font-bold text-sm shadow-sm transition-all text-center select-none shrink-0"
+              >
+                {closedButtonText}
+              </button>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/15 px-4 py-2 rounded-xl text-sm font-bold text-white tracking-wide border border-white/20">
-              <span>Proceed to Order Type</span>
-              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </button>
+          )}
         </div>
       </div>
     </div>

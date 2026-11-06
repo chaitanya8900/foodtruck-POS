@@ -25,6 +25,7 @@ import { generateOrderNumber, calculateTax, roundToTwo } from '../utils/helpers'
 import { generateNextToken } from '../utils/token';
 import { createPrintJobs, dispatchPrintJobsForOrder } from './print.service';
 import { emitNewOrder, emitOrderUpdate } from '../socket';
+import { getLocalStartOfDay } from '../utils/operatingHours';
 import logger from '../utils/logger';
 
 // In-memory cache for order listing queries (10-second TTL, invalidated on write)
@@ -718,6 +719,113 @@ export async function cancelOrder(
 }
 
 /**
+ * Automatically cancels any pending payment orders created before the start of the current
+ * business day. Ensures the pending payments page refreshes everyday and only shows today's orders.
+ */
+export async function autoCancelStalePendingPaymentOrders(businessId?: string): Promise<number> {
+  try {
+    const businesses = businessId
+      ? await prisma.business.findMany({ where: { id: businessId } })
+      : await prisma.business.findMany({ where: { is_active: true } });
+
+    let totalCancelled = 0;
+
+    for (const biz of businesses) {
+      const timezone = biz.timezone || 'Asia/Kolkata';
+      const resetTime = biz.token_reset_time || '04:00';
+      const startOfToday = getLocalStartOfDay(timezone, resetTime);
+
+      const staleOrders = await prisma.order.findMany({
+        where: {
+          business_id: biz.id,
+          order_status: OrderStatus.PENDING_PAYMENT,
+          created_at: { lt: startOfToday }
+        },
+        select: { id: true, order_number: true }
+      });
+
+      if (staleOrders.length > 0) {
+        const staleIds = staleOrders.map((o) => o.id);
+        const updateResult = await prisma.order.updateMany({
+          where: { id: { in: staleIds } },
+          data: {
+            order_status: OrderStatus.CANCELLED,
+            payment_status: PaymentStatus.FAILED,
+            cancel_reason: 'Auto-cancelled: Expired at end of day',
+            updated_at: new Date()
+          }
+        });
+
+        totalCancelled += updateResult.count;
+        clearOrdersQueryCache();
+
+        for (const order of staleOrders) {
+          try {
+            emitOrderUpdate(biz.id, {
+              id: order.id,
+              orderNumber: order.order_number,
+              orderStatus: OrderStatus.CANCELLED,
+              paymentStatus: PaymentStatus.FAILED
+            });
+          } catch {}
+        }
+      }
+    }
+
+    return totalCancelled;
+  } catch (err) {
+    logger.error({ err }, 'Error auto-cancelling stale pending payment orders');
+    return 0;
+  }
+}
+
+/**
+ * Cancels all remaining pending payment orders for a business (e.g. when food truck closes for the day).
+ */
+export async function cancelAllPendingPaymentOrders(businessId: string, reason: string = 'Auto-cancelled: Closed for today'): Promise<number> {
+  try {
+    const pendingOrders = await prisma.order.findMany({
+      where: {
+        business_id: businessId,
+        order_status: OrderStatus.PENDING_PAYMENT
+      },
+      select: { id: true, order_number: true }
+    });
+
+    if (pendingOrders.length === 0) return 0;
+
+    const ids = pendingOrders.map((o) => o.id);
+    const updateResult = await prisma.order.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        order_status: OrderStatus.CANCELLED,
+        payment_status: PaymentStatus.FAILED,
+        cancel_reason: reason,
+        updated_at: new Date()
+      }
+    });
+
+    clearOrdersQueryCache();
+
+    for (const order of pendingOrders) {
+      try {
+        emitOrderUpdate(businessId, {
+          id: order.id,
+          orderNumber: order.order_number,
+          orderStatus: OrderStatus.CANCELLED,
+          paymentStatus: PaymentStatus.FAILED
+        });
+      } catch {}
+    }
+
+    return updateResult.count;
+  } catch (err) {
+    logger.error({ err }, 'Error cancelling all pending payment orders');
+    return 0;
+  }
+}
+
+/**
  * Kitchen workflow: updates order status (CONFIRMED -> PREPARING -> READY -> COMPLETED).
  */
 export async function updateOrderStatus(
@@ -908,6 +1016,13 @@ export async function getOrders(businessId: string, filters: OrderQueryFilters) 
   if (tabFilter === 'pending_payment' || tabFilter === 'pending') {
     where.payment_status = PaymentStatus.PENDING;
     where.order_status = { not: OrderStatus.CANCELLED };
+    // Pending payments only show current operating day's orders
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { timezone: true, token_reset_time: true }
+    });
+    const startOfToday = getLocalStartOfDay(business?.timezone || 'Asia/Kolkata', business?.token_reset_time || '04:00');
+    where.created_at = { ...(where.created_at as any || {}), gte: startOfToday };
   } else if (tabFilter === 'ready_for_token' || tabFilter === 'ready') {
     where.payment_status = PaymentStatus.PAID;
     where.order_status = { not: OrderStatus.CANCELLED };

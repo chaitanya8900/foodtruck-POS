@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ShoppingCart,
   Plus,
   Minus,
   Search,
-  Sparkles,
   ChevronRight,
   Edit2,
   UtensilsCrossed
@@ -18,22 +17,9 @@ import { formatCurrency } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
 import CustomerCustomizationDrawer, { isItemVeg } from '@/components/customer/CustomerCustomizationDrawer';
 
-interface CustomerContextType {
-  qrToken?: string;
-  tableInfo?: {
-    tableName: string;
-    tableNumber: string;
-  };
-  business?: {
-    name: string;
-    taxRate: number;
-  };
-}
-
 export const CustomerMenuPage: React.FC = () => {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
-  const context = useOutletContext<CustomerContextType>();
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +42,10 @@ export const CustomerMenuPage: React.FC = () => {
     queryFn: () => publicApi.getPublicMenu(qrToken),
     staleTime: 60000,
   });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, []);
 
   const categories = useMemo(() => {
     const list: any[] = Array.isArray(menuData)
@@ -178,22 +168,6 @@ export const CustomerMenuPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)] bg-[#FAF4F2]">
-      {/* Table Banner */}
-      <div className="bg-gradient-to-r from-[#3A0A0F] via-[#5B0F1B] to-[#3A0A0F] text-white px-4 py-3 shadow-xs flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold tracking-wider uppercase text-white/90">
-            {context?.tableInfo?.tableName ? 'Ordering from' : 'Express Self-Ordering'}
-          </p>
-          <p className="text-sm font-extrabold tracking-tight text-white">
-            {context?.tableInfo?.tableName || context?.business?.name || 'Main Menu'}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white border border-white/20">
-          <Sparkles className="w-3.5 h-3.5 text-white" />
-          <span>Fresh & Fast</span>
-        </div>
-      </div>
-
       {/* Top Search & Veg / Non-Veg Filters matching IMG_4295.PNG */}
       <div className="p-3.5 bg-white sticky top-14 z-20 border-b border-neutral-200/80 shadow-xs">
         <div className="flex items-center gap-2">

@@ -55,6 +55,27 @@ export enum SelectionType {
   MULTIPLE = 'MULTIPLE',
 }
 
+export interface MobileOrderingSchedule {
+  enabled: boolean;
+  manualClosed: boolean;
+  manualClosedDate?: string;
+  manualClosedMessage?: string;
+  days: string[]; // ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+  openTime: string; // e.g. '17:00'
+  closeTime: string; // e.g. '22:00'
+}
+
+export interface OrderingStatus {
+  isOpen: boolean;
+  reason: 'OPEN' | 'MANUAL_CLOSED' | 'DAY_CLOSED' | 'BEFORE_HOURS' | 'AFTER_HOURS' | 'DISABLED';
+  message: string;
+  closedButtonText: string;
+  bannerText: string;
+  formattedOpenTime: string;
+  formattedCloseTime: string;
+  schedule: MobileOrderingSchedule;
+}
+
 // Core Entity Interfaces
 export interface Business {
   id: string;
@@ -67,7 +88,8 @@ export interface Business {
   receiptHeader?: string;
   receiptFooter?: string;
   taxRate: number; // e.g. 5 for 5%
-  operatingHours?: string;
+  operatingHours?: MobileOrderingSchedule | string | any;
+  orderingStatus?: OrderingStatus;
   dineInEnabled: boolean;
   takeawayEnabled: boolean;
   tokenPrefix?: string;

@@ -399,7 +399,11 @@ export const MenuItemsPage: React.FC = () => {
       {/* Add / Edit Item Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          if (isAdjustModalOpen) return;
+          setIsModalOpen(false);
+        }}
+        closeOnOutsideClick={false}
         title={editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
         description="Configure product name, price, category, photo and customizable add-ons"
         maxWidth="2xl"

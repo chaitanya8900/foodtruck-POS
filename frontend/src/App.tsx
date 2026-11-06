@@ -32,6 +32,7 @@ import PaymentSelectPage from '@/pages/customer/PaymentSelectPage';
 import OrderConfirmationPage from '@/pages/customer/OrderConfirmationPage';
 
 import PhonePeCheckoutPage from '@/pages/customer/PhonePeCheckoutPage';
+import ScrollToTop from '@/components/common/ScrollToTop';
 
 import useAuth from '@/hooks/useAuth';
 import { useLocation } from 'react-router-dom';
@@ -84,7 +85,9 @@ const LegacyConfirmationRedirect: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Root redirect based on role */}
       <Route path="/" element={<RootRedirect />} />
 
@@ -144,6 +147,7 @@ export const App: React.FC = () => {
       {/* Catch-all Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 };
 

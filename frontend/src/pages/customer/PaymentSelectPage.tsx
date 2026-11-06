@@ -1,24 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { QrCode, Banknote, ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react';
 
 import publicApi from '@/api/public';
 import useCartStore from '@/store/cart';
-import { OrderType } from '@/types';
+import { OrderType, OrderingStatus } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 export const PaymentSelectPage: React.FC = () => {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const context = useOutletContext<{ orderingStatus?: OrderingStatus }>();
   const isSubmittingOrNavigatingRef = useRef(false);
 
   // Get orderType from navigation state, fallback to DINE_IN
   const orderType: OrderType = location.state?.orderType || OrderType.DINE_IN;
 
   const [paymentOption, setPaymentOption] = useState<'online_upi' | 'pay_at_counter'>('online_upi');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (context?.orderingStatus && !context.orderingStatus.isOpen) {
+      navigate(`/order/t/${qrToken}/cart`, { replace: true });
+    }
+  }, [context?.orderingStatus, qrToken, navigate]);
 
   const {
     items,
@@ -50,7 +58,20 @@ export const PaymentSelectPage: React.FC = () => {
     },
     onError: (err: any) => {
       isSubmittingOrNavigatingRef.current = false;
-      toast.error(err.response?.data?.message || 'Failed to submit order. Please try again.');
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to submit order. Please try again.';
+
+      // Check if error is due to an invalid/non-existent menu item
+      if (msg.includes('does not exist or belongs to another business') || msg.includes('does not exist')) {
+        const match = msg.match(/Menu item ([0-9a-f-]+) does not exist/i);
+        if (match && match[1]) {
+          useCartStore.getState().removeByMenuItemId(match[1]);
+        }
+        toast.error('An item in your cart is no longer available on the menu and has been removed.');
+        navigate(`/order/t/${qrToken}/cart`);
+        return;
+      }
+
+      toast.error(msg);
     },
   });
 

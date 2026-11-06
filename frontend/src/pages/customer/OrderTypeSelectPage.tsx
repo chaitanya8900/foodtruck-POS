@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { Utensils, ShoppingBag, Check, ArrowLeft, ArrowRight } from 'lucide-react';
-import { OrderType } from '@/types';
+import { OrderType, OrderingStatus } from '@/types';
 
 export const OrderTypeSelectPage: React.FC = () => {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
-  const context = useOutletContext<{ tableInfo?: { tableName: string } }>();
+  const context = useOutletContext<{ tableInfo?: { tableName: string }; orderingStatus?: OrderingStatus }>();
 
   const [selectedType, setSelectedType] = useState<OrderType | null>(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (context?.orderingStatus && !context.orderingStatus.isOpen) {
+      navigate(`/order/t/${qrToken}/cart`, { replace: true });
+    }
+  }, [context?.orderingStatus, qrToken, navigate]);
 
   const handleContinue = () => {
     if (!selectedType) return;

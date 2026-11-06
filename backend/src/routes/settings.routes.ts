@@ -6,6 +6,10 @@ import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { NotFoundError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
+import { evaluateOrderingStatus, normalizeOperatingHours } from '../utils/operatingHours';
+import { invalidatePublicCache } from './public.routes';
+import { getIO } from '../socket';
+import * as orderService from '../services/order.service';
 
 const router = Router();
 
@@ -51,6 +55,8 @@ router.get('/', async (req: AuthRequest, res: Response, next) => {
       settingsMap[s.setting_key] = s.setting_value;
     }
 
+    const orderingStatus = evaluateOrderingStatus(business.operating_hours, business.timezone);
+
     res.status(200).json({
       success: true,
       data: {
@@ -64,6 +70,7 @@ router.get('/', async (req: AuthRequest, res: Response, next) => {
         tokenPrefix: business.token_prefix,
         tokenResetTime: business.token_reset_time,
         operatingHours: business.operating_hours,
+        orderingStatus,
         customSettings: settingsMap
       }
     });
@@ -97,8 +104,10 @@ const handleUpdateSettings = async (req: AuthRequest, res: Response, next: any) 
       dataToUpdate.token_prefix = b.token_prefix || b.tokenPrefix;
     if (b.token_reset_time !== undefined || b.tokenResetTime !== undefined)
       dataToUpdate.token_reset_time = b.token_reset_time || b.tokenResetTime;
-    if (b.operating_hours !== undefined || b.operatingHours !== undefined)
-      dataToUpdate.operating_hours = b.operating_hours || b.operatingHours;
+    if (b.operatingHours !== undefined || b.operating_hours !== undefined) {
+      const raw = b.operatingHours !== undefined ? b.operatingHours : b.operating_hours;
+      dataToUpdate.operating_hours = normalizeOperatingHours(raw);
+    }
 
     const updated = await prisma.business.update({
       where: { id: req.user!.businessId },
@@ -107,6 +116,18 @@ const handleUpdateSettings = async (req: AuthRequest, res: Response, next: any) 
         updated_at: new Date()
       }
     });
+
+    invalidatePublicCache(req.user!.businessId);
+    const orderingStatus = evaluateOrderingStatus(updated.operating_hours, updated.timezone);
+
+    if (orderingStatus.isOpen === false && orderingStatus.reason === 'MANUAL_CLOSED') {
+      await orderService.cancelAllPendingPaymentOrders(req.user!.businessId, 'Auto-cancelled: Closed for today');
+    }
+
+    try {
+      const io = getIO();
+      io.emit('ordering_status_changed', orderingStatus);
+    } catch {}
 
     // Audit Log
     await prisma.auditLog.create({
@@ -133,7 +154,8 @@ const handleUpdateSettings = async (req: AuthRequest, res: Response, next: any) 
         fssaiNumber: updated.fssai_number,
         tokenPrefix: updated.token_prefix,
         tokenResetTime: updated.token_reset_time,
-        operatingHours: updated.operating_hours
+        operatingHours: updated.operating_hours,
+        orderingStatus
       }
     });
   } catch (err) {
@@ -143,6 +165,79 @@ const handleUpdateSettings = async (req: AuthRequest, res: Response, next: any) 
 
 router.put('/', authorize([Role.ADMIN]), handleUpdateSettings);
 router.patch('/', authorize([Role.ADMIN]), handleUpdateSettings);
+
+// PATCH /api/settings/mobile-ordering-status (Quick toggle & schedule configuration - Admin only)
+router.patch('/mobile-ordering-status', authorize([Role.ADMIN]), async (req: AuthRequest, res: Response, next) => {
+  try {
+    const business = await prisma.business.findUnique({
+      where: { id: req.user!.businessId }
+    });
+    if (!business) throw new NotFoundError('Business not found');
+
+    const currentSchedule = normalizeOperatingHours(business.operating_hours);
+    const b = req.body;
+
+    const updatedSchedule = {
+      ...currentSchedule,
+      ...(b.enabled !== undefined ? { enabled: Boolean(b.enabled) } : {}),
+      ...(b.manualClosed !== undefined ? { manualClosed: Boolean(b.manualClosed) } : {}),
+      ...(b.manualClosedMessage !== undefined ? { manualClosedMessage: String(b.manualClosedMessage) } : {}),
+      ...(Array.isArray(b.days) ? { days: b.days } : {}),
+      ...(b.openTime ? { openTime: b.openTime } : {}),
+      ...(b.closeTime ? { closeTime: b.closeTime } : {}),
+    };
+
+    if (b.manualClosed === true) {
+      // Stamp today's date in business timezone
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: business.timezone || 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).formatToParts(new Date());
+        const getPart = (t: string) => parts.find(p => p.type === t)?.value || '';
+        updatedSchedule.manualClosedDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+      } catch {
+        updatedSchedule.manualClosedDate = new Date().toISOString().split('T')[0];
+      }
+    } else if (b.manualClosed === false) {
+      updatedSchedule.manualClosedDate = '';
+    }
+
+    const updatedBiz = await prisma.business.update({
+      where: { id: req.user!.businessId },
+      data: {
+        operating_hours: updatedSchedule as any,
+        updated_at: new Date()
+      }
+    });
+
+    invalidatePublicCache(req.user!.businessId);
+
+    const orderingStatus = evaluateOrderingStatus(updatedBiz.operating_hours, updatedBiz.timezone);
+
+    if (b.manualClosed === true) {
+      await orderService.cancelAllPendingPaymentOrders(req.user!.businessId, 'Auto-cancelled: Closed for today');
+    }
+
+    try {
+      const io = getIO();
+      io.emit('ordering_status_changed', orderingStatus);
+    } catch {}
+
+    res.status(200).json({
+      success: true,
+      message: orderingStatus.isOpen ? 'Mobile ordering is now OPEN' : 'Mobile ordering is now CLOSED',
+      data: {
+        operatingHours: updatedBiz.operating_hours,
+        orderingStatus
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/settings/custom (Get custom key-value settings)
 router.get('/custom', async (req: AuthRequest, res: Response, next) => {

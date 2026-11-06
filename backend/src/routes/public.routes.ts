@@ -5,6 +5,7 @@ import { OrderType, PaymentMethod } from '@prisma/client';
 import * as menuService from '../services/menu.service';
 import * as tableService from '../services/table.service';
 import * as orderService from '../services/order.service';
+import { evaluateOrderingStatus, normalizeOperatingHours } from '../utils/operatingHours';
 import { validate } from '../middleware/validate';
 import prisma from '../prisma';
 
@@ -97,6 +98,16 @@ function formatCategory(cat: any) {
 const publicMenuCache = new Map<string, { timestamp: number; data: any }>();
 const PUBLIC_MENU_TTL = 30 * 1000;
 let cachedDefaultBusinessId: string | null = null;
+const tableInfoCache = new Map<string, { timestamp: number; data: any }>();
+
+export function invalidatePublicCache(businessId?: string) {
+  if (businessId) {
+    publicMenuCache.delete(businessId);
+  } else {
+    publicMenuCache.clear();
+  }
+  tableInfoCache.clear();
+}
 
 // GET /api/public/menu
 router.get('/menu', async (req: Request, res: Response, next) => {
@@ -151,9 +162,13 @@ router.get('/menu', async (req: Request, res: Response, next) => {
         phone: true,
         tax_rate: true,
         is_dine_in_enabled: true,
-        is_takeaway_enabled: true
+        is_takeaway_enabled: true,
+        operating_hours: true,
+        timezone: true
       }
     });
+
+    const orderingStatus = business ? evaluateOrderingStatus(business.operating_hours, business.timezone) : null;
 
     const formattedData = {
       categories: menu.map(formatCategory),
@@ -165,7 +180,9 @@ router.get('/menu', async (req: Request, res: Response, next) => {
             phone: business.phone,
             taxRate: Number(business.tax_rate),
             dineInEnabled: business.is_dine_in_enabled,
-            takeawayEnabled: business.is_takeaway_enabled
+            takeawayEnabled: business.is_takeaway_enabled,
+            operatingHours: business.operating_hours,
+            orderingStatus
           }
         : null
     };
@@ -180,8 +197,6 @@ router.get('/menu', async (req: Request, res: Response, next) => {
     next(err);
   }
 });
-
-const tableInfoCache = new Map<string, { timestamp: number; data: any }>();
 
 // GET /api/public/table/:qrToken
 router.get('/table/:qrToken', async (req: Request, res: Response, next) => {
@@ -207,6 +222,8 @@ router.get('/table/:qrToken', async (req: Request, res: Response, next) => {
         return;
       }
 
+      const orderingStatus = evaluateOrderingStatus(defaultBiz.operating_hours, defaultBiz.timezone);
+
       const mainQrData = {
         id: 'main',
         table_name: '',
@@ -219,7 +236,9 @@ router.get('/table/:qrToken', async (req: Request, res: Response, next) => {
           currency: defaultBiz.currency,
           tax_rate: Number(defaultBiz.tax_rate),
           is_dine_in_enabled: defaultBiz.is_dine_in_enabled,
-          is_takeaway_enabled: defaultBiz.is_takeaway_enabled
+          is_takeaway_enabled: defaultBiz.is_takeaway_enabled,
+          operatingHours: defaultBiz.operating_hours,
+          orderingStatus
         }
       };
 
@@ -234,6 +253,8 @@ router.get('/table/:qrToken', async (req: Request, res: Response, next) => {
 
     const table = await tableService.getTableByQrToken(qrToken);
     const tableNumberMatch = table.table_name.match(/\d+/);
+    const orderingStatus = evaluateOrderingStatus((table.business as any).operating_hours, (table.business as any).timezone);
+
     const tableData = {
       id: table.id,
       table_name: table.table_name,
@@ -246,7 +267,9 @@ router.get('/table/:qrToken', async (req: Request, res: Response, next) => {
         currency: table.business.currency,
         tax_rate: Number(table.business.tax_rate),
         is_dine_in_enabled: table.business.is_dine_in_enabled,
-        is_takeaway_enabled: table.business.is_takeaway_enabled
+        is_takeaway_enabled: table.business.is_takeaway_enabled,
+        operatingHours: (table.business as any).operating_hours,
+        orderingStatus
       }
     };
 
@@ -273,6 +296,30 @@ router.post(
       if (!qrToken) {
         res.status(400).json({ success: false, message: 'QR token is required' });
         return;
+      }
+
+      // Check business operating hours and mobile ordering schedule
+      let bizForCheck = null;
+      if (qrToken === 'main' || qrToken === 'qr_main') {
+        bizForCheck = await prisma.business.findFirst({ where: { is_active: true } });
+      } else {
+        const table = await prisma.table.findUnique({
+          where: { qr_token: qrToken },
+          include: { business: true }
+        });
+        bizForCheck = table?.business || (await prisma.business.findFirst({ where: { is_active: true } }));
+      }
+
+      if (bizForCheck) {
+        const status = evaluateOrderingStatus(bizForCheck.operating_hours, bizForCheck.timezone);
+        if (!status.isOpen) {
+          res.status(400).json({
+            success: false,
+            message: status.message || 'Mobile ordering is currently closed.',
+            orderingStatus: status
+          });
+          return;
+        }
       }
 
       const rawOrderType = (b.order_type || b.orderType || 'dine_in').toString().toUpperCase();

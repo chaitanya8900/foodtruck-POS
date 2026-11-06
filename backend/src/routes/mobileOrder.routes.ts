@@ -59,6 +59,9 @@ router.get(
   validate({ query: mobileOrderQuerySchema }),
   async (req: AuthRequest, res: Response, next) => {
     try {
+      // Auto-cancel any stale pending payment orders from previous days so pending payments refresh daily
+      await orderService.autoCancelStalePendingPaymentOrders(req.user!.businessId);
+
       const filters = {
         ...req.query,
         source: OrderSource.QR

@@ -1,9 +1,25 @@
 import apiClient from './client';
-import { CreateQROrderRequest, MenuCategory, Order, Table } from '@/types';
+import { CreateQROrderRequest, MenuCategory, Order, Table, OrderingStatus } from '@/types';
 
 export interface PublicTableInfo {
-  table: Table;
-  businessName: string;
+  id?: string;
+  table?: Table;
+  table_name?: string;
+  table_number?: string;
+  qr_token?: string;
+  is_main_qr?: boolean;
+  businessName?: string;
+  business?: {
+    id: string;
+    name: string;
+    currency: string;
+    tax_rate?: number;
+    taxRate?: number;
+    is_dine_in_enabled?: boolean;
+    is_takeaway_enabled?: boolean;
+    operatingHours?: any;
+    orderingStatus?: OrderingStatus;
+  };
 }
 
 export interface PublicMenuResponse {
@@ -16,6 +32,8 @@ export interface PublicMenuResponse {
     taxRate: number;
     dineInEnabled: boolean;
     takeawayEnabled: boolean;
+    operatingHours?: any;
+    orderingStatus?: OrderingStatus;
   };
 }
 

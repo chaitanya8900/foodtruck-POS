@@ -16,6 +16,8 @@ interface CartState {
   getTax: (taxRate?: number) => number;
   getTotal: (taxRate?: number, discount?: number) => number;
   getItemCount: () => number;
+  removeByMenuItemId: (menuItemId: string) => void;
+  revalidateCart: (availableMenuItems: Array<{ id: string }>) => boolean;
 }
 
 const areCustomizationsEqual = (a: CartItemModifier[] = [], b: CartItemModifier[] = []): boolean => {
@@ -163,6 +165,24 @@ export const useCartStore = create<CartState>()(
 
   getItemCount: () => {
     return get().items.reduce((sum, item) => sum + item.quantity, 0);
+  },
+
+  removeByMenuItemId: (menuItemId: string) => {
+    set((state) => ({
+      items: state.items.filter((item) => item.menuItem.id !== menuItemId),
+    }));
+  },
+
+  revalidateCart: (availableMenuItems: Array<{ id: string }>) => {
+    if (!availableMenuItems || availableMenuItems.length === 0) return false;
+    const validIdSet = new Set(availableMenuItems.map((m) => m.id));
+    const currentItems = get().items;
+    const cleanItems = currentItems.filter((item) => validIdSet.has(item.menuItem.id));
+    if (cleanItems.length !== currentItems.length) {
+      set({ items: cleanItems });
+      return true;
+    }
+    return false;
   },
 }),
     {

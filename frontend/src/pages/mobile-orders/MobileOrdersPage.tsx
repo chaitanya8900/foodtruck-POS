@@ -105,11 +105,25 @@ export const MobileOrdersPage: React.FC = () => {
 
   // Split tabs in memory without duplicate network calls
   const pendingOrders = useMemo(() => {
+    const today = new Date();
+    const todayY = today.getFullYear();
+    const todayM = today.getMonth();
+    const todayD = today.getDate();
+
     return allMobileOrders.filter((o) => {
       const isPaid = o.paymentStatus === PaymentStatus.PAID || (o as any).payment_status === 'PAID';
       const isCancelled = o.orderStatus === OrderStatus.CANCELLED || (o as any).order_status === 'CANCELLED';
       const hasToken = !!(o.tokenNumber || (o as any).token_number);
-      return !isPaid && !hasToken && !isCancelled;
+      if (isPaid || hasToken || isCancelled) return false;
+
+      // Pending payment tab refreshes everyday: only show today's pay-at-counter orders
+      const orderDate = new Date(o.createdAt || (o as any).created_at);
+      const isToday =
+        orderDate.getFullYear() === todayY &&
+        orderDate.getMonth() === todayM &&
+        orderDate.getDate() === todayD;
+
+      return isToday;
     });
   }, [allMobileOrders]);
 

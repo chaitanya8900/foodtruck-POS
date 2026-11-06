@@ -49,7 +49,9 @@ export async function getTableByQrToken(qrToken: string) {
           is_dine_in_enabled: true,
           is_takeaway_enabled: true,
           tax_rate: true,
-          currency: true
+          currency: true,
+          operating_hours: true,
+          timezone: true
         }
       }
     }
