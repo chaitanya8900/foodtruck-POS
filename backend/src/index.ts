@@ -159,48 +159,50 @@ app.use(errorHandler);
 const httpServer = http.createServer(app);
 initSocket(httpServer);
 
-// Start server
-httpServer.listen(PORT, () => {
-  logger.info(`Food Truck POS Backend server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start server when running directly or in local development (not managed by Vercel serverless)
+if (!process.env.VERCEL) {
+  httpServer.listen(PORT, () => {
+    logger.info(`Food Truck POS Backend server running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 
-  // Keep PostgreSQL connection pool warm (every 45s) to eliminate cold starts and idle disconnects
-  const keepWarmTimer = setInterval(async () => {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch {
-      // Ignored
-    }
-  }, 45000);
-  keepWarmTimer.unref();
+    // Keep PostgreSQL connection pool warm (every 45s) to eliminate cold starts and idle disconnects
+    const keepWarmTimer = setInterval(async () => {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+      } catch {
+        // Ignored
+      }
+    }, 45000);
+    keepWarmTimer.unref();
 
-  // Auto-cancel stale pending payment orders from previous days at startup
-  orderService.autoCancelStalePendingPaymentOrders().catch((err) => {
-    logger.error({ err }, 'Initial auto-cancel pending orders error');
+    // Auto-cancel stale pending payment orders from previous days at startup
+    orderService.autoCancelStalePendingPaymentOrders().catch((err) => {
+      logger.error({ err }, 'Initial auto-cancel pending orders error');
+    });
+
+    // Periodically check and auto-cancel stale pending payment orders every 5 minutes
+    const pendingOrdersCleanupTimer = setInterval(async () => {
+      try {
+        await orderService.autoCancelStalePendingPaymentOrders();
+      } catch (err) {
+        logger.error({ err }, 'Background auto-cancel pending orders error');
+      }
+    }, 5 * 60 * 1000);
+    pendingOrdersCleanupTimer.unref();
   });
 
-  // Periodically check and auto-cancel stale pending payment orders every 5 minutes
-  const pendingOrdersCleanupTimer = setInterval(async () => {
-    try {
-      await orderService.autoCancelStalePendingPaymentOrders();
-    } catch (err) {
-      logger.error({ err }, 'Background auto-cancel pending orders error');
-    }
-  }, 5 * 60 * 1000);
-  pendingOrdersCleanupTimer.unref();
-});
+  // Graceful Shutdown
+  function handleShutdown(signal: string) {
+    logger.info(`Received ${signal}. Shutting down gracefully...`);
+    httpServer.close(() => {
+      logger.info('HTTP server closed.');
+      process.exit(0);
+    });
+  }
 
-// Graceful Shutdown
-function handleShutdown(signal: string) {
-  logger.info(`Received ${signal}. Shutting down gracefully...`);
-  httpServer.close(() => {
-    logger.info('HTTP server closed.');
-    process.exit(0);
-  });
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
-
-process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error({ reason }, 'Unhandled Rejection at Promise');
@@ -210,5 +212,4 @@ process.on('uncaughtException', (err) => {
   logger.error({ err }, 'Uncaught Exception thrown');
 });
 
-export { app, httpServer };
 export default app;

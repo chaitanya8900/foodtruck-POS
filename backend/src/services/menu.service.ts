@@ -8,6 +8,12 @@ const MENU_CACHE_TTL_MS = 30 * 1000;
 
 import { invalidateMenuItemsCache } from './order.service';
 
+const menuCacheInvalidationCallbacks: Array<(businessId?: string) => void> = [];
+
+export function onMenuCacheInvalidated(callback: (businessId?: string) => void) {
+  menuCacheInvalidationCallbacks.push(callback);
+}
+
 export function clearMenuCache(businessId?: string) {
   if (businessId) {
     menuCache.delete(`${businessId}:true`);
@@ -16,6 +22,13 @@ export function clearMenuCache(businessId?: string) {
     menuCache.clear();
   }
   invalidateMenuItemsCache(businessId);
+  for (const cb of menuCacheInvalidationCallbacks) {
+    try {
+      cb(businessId);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 // ======================== CATEGORIES ========================
@@ -157,6 +170,28 @@ export async function getItemById(id: string, businessId: string) {
   return item;
 }
 
+export interface ModifierOptionInput {
+  id?: string;
+  name: string;
+  additional_price?: number | Prisma.Decimal;
+  is_available?: boolean;
+  display_order?: number;
+}
+
+export interface ModifierGroupInput {
+  id?: string;
+  name: string;
+  selection_type?: ModifierSelectionType;
+  min_selections?: number;
+  max_selections?: number;
+  is_required?: boolean;
+  display_order?: number;
+  options?: ModifierOptionInput[];
+}
+
+const isUuid = (val?: string): boolean =>
+  typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
 export async function createItem(
   businessId: string,
   data: {
@@ -169,32 +204,80 @@ export async function createItem(
     preparation_time?: number;
     tax_rate?: number | Prisma.Decimal;
     display_order?: number;
+    modifier_groups?: ModifierGroupInput[];
   }
 ) {
   // Validate category belongs to this business
   await getCategoryById(data.category_id, businessId);
-  clearMenuCache(businessId);
 
-  return prisma.menuItem.create({
-    data: {
-      business_id: businessId,
-      category_id: data.category_id,
-      name: data.name,
-      description: data.description || null,
-      price: new Prisma.Decimal(data.price),
-      image_url: data.image_url || null,
-      is_available: data.is_available ?? true,
-      preparation_time: data.preparation_time || null,
-      tax_rate: data.tax_rate !== undefined ? new Prisma.Decimal(data.tax_rate) : new Prisma.Decimal(5.0),
-      display_order: data.display_order ?? 0
-    },
-    include: {
-      category: true,
-      modifier_groups: {
-        include: { options: true }
+  const result = await prisma.$transaction(async (tx) => {
+    const item = await tx.menuItem.create({
+      data: {
+        business_id: businessId,
+        category_id: data.category_id,
+        name: data.name,
+        description: data.description || null,
+        price: new Prisma.Decimal(data.price),
+        image_url: data.image_url || null,
+        is_available: data.is_available ?? true,
+        preparation_time: data.preparation_time || null,
+        tax_rate: data.tax_rate !== undefined ? new Prisma.Decimal(data.tax_rate) : new Prisma.Decimal(5.0),
+        display_order: data.display_order ?? 0
+      }
+    });
+
+    if (data.modifier_groups && data.modifier_groups.length > 0) {
+      for (let gIdx = 0; gIdx < data.modifier_groups.length; gIdx++) {
+        const group = data.modifier_groups[gIdx];
+        if (!group.name || !group.name.trim()) continue;
+
+        await tx.modifierGroup.create({
+          data: {
+            ...(isUuid(group.id) ? { id: group.id } : {}),
+            business_id: businessId,
+            menu_item_id: item.id,
+            name: group.name.trim(),
+            selection_type: group.selection_type || ModifierSelectionType.SINGLE,
+            min_selections: group.min_selections ?? 0,
+            max_selections: group.max_selections ?? 1,
+            is_required: group.is_required ?? false,
+            display_order: group.display_order ?? gIdx,
+            options: group.options && group.options.length > 0
+              ? {
+                  create: group.options
+                    .filter((opt) => opt.name && opt.name.trim())
+                    .map((opt, optIdx) => ({
+                      ...(isUuid(opt.id) ? { id: opt.id } : {}),
+                      name: opt.name.trim(),
+                      additional_price: new Prisma.Decimal(opt.additional_price || 0),
+                      is_available: opt.is_available ?? true,
+                      display_order: opt.display_order ?? optIdx
+                    }))
+                }
+              : undefined
+          }
+        });
       }
     }
+
+    return tx.menuItem.findUniqueOrThrow({
+      where: { id: item.id },
+      include: {
+        category: true,
+        modifier_groups: {
+          orderBy: { display_order: 'asc' },
+          include: {
+            options: {
+              orderBy: { display_order: 'asc' }
+            }
+          }
+        }
+      }
+    });
   });
+
+  clearMenuCache(businessId);
+  return result;
 }
 
 export async function updateItem(
@@ -210,6 +293,7 @@ export async function updateItem(
     preparation_time: number | null;
     tax_rate: number | Prisma.Decimal;
     display_order: number;
+    modifier_groups: ModifierGroupInput[];
   }>
 ) {
   await getItemById(id, businessId);
@@ -217,26 +301,82 @@ export async function updateItem(
   if (data.category_id) {
     await getCategoryById(data.category_id, businessId);
   }
-  clearMenuCache(businessId);
 
-  const updateData: any = { ...data };
-  if (data.price !== undefined) {
-    updateData.price = new Prisma.Decimal(data.price);
+  const { modifier_groups, ...scalarData } = data;
+  const updateData: any = { ...scalarData };
+  if (scalarData.price !== undefined) {
+    updateData.price = new Prisma.Decimal(scalarData.price);
   }
-  if (data.tax_rate !== undefined) {
-    updateData.tax_rate = new Prisma.Decimal(data.tax_rate);
+  if (scalarData.tax_rate !== undefined) {
+    updateData.tax_rate = new Prisma.Decimal(scalarData.tax_rate);
   }
 
-  return prisma.menuItem.update({
-    where: { id },
-    data: updateData,
-    include: {
-      category: true,
-      modifier_groups: {
-        include: { options: true }
+  const result = await prisma.$transaction(async (tx) => {
+    if (Object.keys(updateData).length > 0) {
+      await tx.menuItem.update({
+        where: { id },
+        data: updateData
+      });
+    }
+
+    if (modifier_groups !== undefined) {
+      // Remove previous modifier groups (options cascade delete)
+      await tx.modifierGroup.deleteMany({
+        where: { menu_item_id: id }
+      });
+
+      // Insert new/updated modifier groups
+      for (let gIdx = 0; gIdx < modifier_groups.length; gIdx++) {
+        const group = modifier_groups[gIdx];
+        if (!group.name || !group.name.trim()) continue;
+
+        await tx.modifierGroup.create({
+          data: {
+            ...(isUuid(group.id) ? { id: group.id } : {}),
+            business_id: businessId,
+            menu_item_id: id,
+            name: group.name.trim(),
+            selection_type: group.selection_type || ModifierSelectionType.SINGLE,
+            min_selections: group.min_selections ?? 0,
+            max_selections: group.max_selections ?? 1,
+            is_required: group.is_required ?? false,
+            display_order: group.display_order ?? gIdx,
+            options: group.options && group.options.length > 0
+              ? {
+                  create: group.options
+                    .filter((opt) => opt.name && opt.name.trim())
+                    .map((opt, optIdx) => ({
+                      ...(isUuid(opt.id) ? { id: opt.id } : {}),
+                      name: opt.name.trim(),
+                      additional_price: new Prisma.Decimal(opt.additional_price || 0),
+                      is_available: opt.is_available ?? true,
+                      display_order: opt.display_order ?? optIdx
+                    }))
+                }
+              : undefined
+          }
+        });
       }
     }
+
+    return tx.menuItem.findUniqueOrThrow({
+      where: { id },
+      include: {
+        category: true,
+        modifier_groups: {
+          orderBy: { display_order: 'asc' },
+          include: {
+            options: {
+              orderBy: { display_order: 'asc' }
+            }
+          }
+        }
+      }
+    });
   });
+
+  clearMenuCache(businessId);
+  return result;
 }
 
 export async function deleteItem(id: string, businessId: string) {

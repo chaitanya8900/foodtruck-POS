@@ -69,17 +69,27 @@ function formatItem(item: any) {
     preparationTimeMinutes: item.preparation_time,
     taxRate: item.tax_rate !== undefined ? Number(item.tax_rate) : undefined,
     price: Number(item.price),
-    modifierGroups: item.modifier_groups?.map((group: any) => ({
+    modifierGroups: (item.modifier_groups || item.modifierGroups || []).map((group: any) => ({
       ...group,
-      selectionType: group.selection_type,
-      minSelections: group.min_selections,
-      maxSelections: group.max_selections,
-      isRequired: group.is_required,
-      options: group.options?.map((opt: any) => ({
-        ...opt,
-        additionalPrice: Number(opt.additional_price || 0),
-        isAvailable: opt.is_available,
-      })),
+      selectionType: group.selection_type || group.selectionType || 'SINGLE',
+      selection_type: group.selection_type || group.selectionType || 'SINGLE',
+      minSelections: group.min_selections ?? group.minSelections ?? 0,
+      min_selections: group.min_selections ?? group.minSelections ?? 0,
+      maxSelections: group.max_selections ?? group.maxSelections ?? 1,
+      max_selections: group.max_selections ?? group.maxSelections ?? 1,
+      isRequired: group.is_required ?? group.isRequired ?? false,
+      is_required: group.is_required ?? group.isRequired ?? false,
+      options: (group.options || []).map((opt: any) => {
+        const price = Number(opt.additional_price ?? opt.additionalPrice ?? opt.price ?? 0);
+        return {
+          ...opt,
+          additionalPrice: price,
+          additional_price: price,
+          price: price,
+          isAvailable: opt.is_available ?? opt.isAvailable ?? true,
+          is_available: opt.is_available ?? opt.isAvailable ?? true,
+        };
+      }),
     })),
   };
 }
@@ -108,6 +118,9 @@ export function invalidatePublicCache(businessId?: string) {
   }
   tableInfoCache.clear();
 }
+
+// Hook into menuService cache invalidation so public menu updates instantly
+menuService.onMenuCacheInvalidated(invalidatePublicCache);
 
 // GET /api/public/menu
 router.get('/menu', async (req: Request, res: Response, next) => {
@@ -346,7 +359,7 @@ router.post(
         const rawModifiers = Array.isArray(item.modifiers || item.customizations) ? (item.modifiers || item.customizations) : [];
         const modifiers = rawModifiers.map((m: any) => ({
           group_id: (m.group_id || m.groupId || m.modifierGroupId || '00000000-0000-0000-0000-000000000000').toString(),
-          group_name: (m.group_name || m.groupName || '').toString().slice(0, 100),
+          group_name: (m.group_name || m.groupName || m.modifierGroupName || '').toString().slice(0, 100),
           option_id: (m.option_id || m.optionId || m.id || '').toString(),
           option_name: (m.option_name || m.optionName || m.name || '').toString().slice(0, 100),
           price: Math.max(0, Number(m.price || m.additionalPrice || 0))
@@ -420,6 +433,20 @@ router.post('/orders/:id/switch-to-counter', async (req: Request, res: Response,
     res.status(200).json({
       success: true,
       message: 'Order updated to Pay at Counter',
+      data: order
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/public/orders/:id/cancel (Cancel uncompleted online payment session if customer navigates back)
+router.post('/orders/:id/cancel', async (req: Request, res: Response, next) => {
+  try {
+    const order = await orderService.cancelPublicUnpaidOrder(req.params.id);
+    res.status(200).json({
+      success: true,
+      message: 'Order cancelled successfully',
       data: order
     });
   } catch (err) {

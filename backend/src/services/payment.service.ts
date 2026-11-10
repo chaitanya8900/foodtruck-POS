@@ -10,7 +10,7 @@ import { emitOrderUpdate, emitOrderPaymentReceived } from '../socket';
 import logger from '../utils/logger';
 import { generateNextToken } from '../utils/token';
 import { createPrintJobs, dispatchPrintJobsForOrder } from './print.service';
-import { clearOrdersQueryCache, formatOrder } from './order.service';
+import { clearOrdersQueryCache, formatOrder, generateFastUniqueOrderNumber } from './order.service';
 
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT';
 const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
@@ -130,6 +130,12 @@ export async function initiatePhonePePayment(orderId: string, redirectBaseUrl?: 
 export async function handlePhonePeWebhook(body: any, receivedChecksum?: string) {
   logger.info({ body }, 'Received PhonePe Webhook callback');
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !receivedChecksum) {
+    logger.error('Missing X-VERIFY checksum header on PhonePe webhook in production');
+    throw new ValidationError('Webhook signature header (x-verify) is required in production');
+  }
+
   // Verify checksum if provided using timing-safe comparison
   if (receivedChecksum && body.response) {
     const expectedChecksum = calculatePhonePeChecksum(body.response, '/pg/v1/status');
@@ -139,7 +145,7 @@ export async function handlePhonePeWebhook(body: any, receivedChecksum?: string)
       bufExpected.length === bufReceived.length &&
       crypto.timingSafeEqual(bufExpected, bufReceived);
 
-    if (!isValid && process.env.NODE_ENV === 'production') {
+    if (!isValid && isProduction) {
       logger.error({ expectedChecksum, receivedChecksum }, 'Invalid PhonePe webhook signature');
       throw new ValidationError('Invalid webhook verification checksum');
     }
@@ -212,9 +218,15 @@ export async function handlePhonePeWebhook(body: any, receivedChecksum?: string)
       assignedToken = await generateNextToken(payment.order.business_id, tx);
     }
 
+    // Assign official QR-XXXX Order Reference upon successful payment verification if not already assigned
+    const finalOrderNumber = (isSuccess && (!payment.order.order_number || !payment.order.order_number.startsWith('QR-')))
+      ? generateFastUniqueOrderNumber('QR')
+      : payment.order.order_number;
+
     const ord = await tx.order.update({
       where: { id: payment.order_id },
       data: {
+        order_number: finalOrderNumber,
         payment_status: newStatus,
         payment_method: PaymentMethod.PHONEPE,
         order_status: isSuccess ? OrderStatus.CONFIRMED : payment.order.order_status,

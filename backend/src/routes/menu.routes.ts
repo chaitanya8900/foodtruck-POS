@@ -39,6 +39,58 @@ const updateCategorySchema = categoryInputSchema.partial().transform((data) => (
   is_active: data.is_active ?? data.isActive
 }));
 
+const itemModifierOptionInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Option name is required').max(255),
+  additional_price: z.number().nonnegative().optional(),
+  additionalPrice: z.number().nonnegative().optional(),
+  price: z.number().nonnegative().optional(),
+  is_available: z.boolean().optional(),
+  isAvailable: z.boolean().optional(),
+  display_order: z.number().int().optional(),
+  displayOrder: z.number().int().optional()
+});
+
+const itemModifierGroupInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Group name is required').max(255),
+  selection_type: z.nativeEnum(ModifierSelectionType).optional(),
+  selectionType: z.nativeEnum(ModifierSelectionType).optional(),
+  min_selections: z.number().int().nonnegative().optional(),
+  minSelections: z.number().int().nonnegative().optional(),
+  max_selections: z.number().int().positive().optional(),
+  maxSelections: z.number().int().positive().optional(),
+  is_required: z.boolean().optional(),
+  isRequired: z.boolean().optional(),
+  display_order: z.number().int().optional(),
+  displayOrder: z.number().int().optional(),
+  options: z.array(itemModifierOptionInputSchema).optional()
+});
+
+function parseModifierGroupsInput(groups?: any[]) {
+  if (!groups || !Array.isArray(groups)) return undefined;
+  return groups
+    .filter((g) => g && typeof g.name === 'string' && g.name.trim().length > 0)
+    .map((g, idx) => ({
+      id: g.id,
+      name: g.name.trim(),
+      selection_type: g.selection_type || g.selectionType || ModifierSelectionType.SINGLE,
+      min_selections: g.min_selections ?? g.minSelections ?? ((g.is_required ?? g.isRequired) ? 1 : 0),
+      max_selections: g.max_selections ?? g.maxSelections ?? 1,
+      is_required: g.is_required ?? g.isRequired ?? false,
+      display_order: g.display_order ?? g.displayOrder ?? idx,
+      options: (g.options || [])
+        .filter((opt: any) => opt && typeof opt.name === 'string' && opt.name.trim().length > 0)
+        .map((opt: any, optIdx: number) => ({
+          id: opt.id,
+          name: opt.name.trim(),
+          additional_price: opt.additional_price ?? opt.additionalPrice ?? opt.price ?? 0,
+          is_available: opt.is_available ?? opt.isAvailable ?? true,
+          display_order: opt.display_order ?? opt.displayOrder ?? optIdx
+        }))
+    }));
+}
+
 const itemInputSchema = z.object({
   category_id: z.string().uuid('Valid category ID required').optional(),
   categoryId: z.string().uuid('Valid category ID required').optional(),
@@ -54,7 +106,9 @@ const itemInputSchema = z.object({
   tax_rate: z.number().nonnegative().optional(),
   taxRate: z.number().nonnegative().optional(),
   display_order: z.number().int().optional(),
-  displayOrder: z.number().int().optional()
+  displayOrder: z.number().int().optional(),
+  modifier_groups: z.array(itemModifierGroupInputSchema).optional(),
+  modifierGroups: z.array(itemModifierGroupInputSchema).optional()
 });
 
 const createItemSchema = itemInputSchema.refine(data => data.category_id || data.categoryId, {
@@ -69,7 +123,8 @@ const createItemSchema = itemInputSchema.refine(data => data.category_id || data
   is_available: data.is_available ?? data.isAvailable ?? true,
   preparation_time: data.preparation_time ?? data.preparationTimeMinutes ?? 10,
   tax_rate: data.tax_rate ?? data.taxRate,
-  display_order: data.display_order ?? data.displayOrder ?? 0
+  display_order: data.display_order ?? data.displayOrder ?? 0,
+  modifier_groups: parseModifierGroupsInput(data.modifierGroups !== undefined ? data.modifierGroups : data.modifier_groups)
 }));
 
 const updateItemSchema = itemInputSchema.partial().transform((data) => ({
@@ -81,7 +136,10 @@ const updateItemSchema = itemInputSchema.partial().transform((data) => ({
   is_available: data.is_available ?? data.isAvailable,
   preparation_time: data.preparation_time ?? data.preparationTimeMinutes,
   tax_rate: data.tax_rate ?? data.taxRate,
-  display_order: data.display_order ?? data.displayOrder
+  display_order: data.display_order ?? data.displayOrder,
+  modifier_groups: (data.modifierGroups !== undefined || data.modifier_groups !== undefined)
+    ? parseModifierGroupsInput(data.modifierGroups !== undefined ? data.modifierGroups : data.modifier_groups)
+    : undefined
 }));
 
 const toggleAvailabilitySchema = z.object({
@@ -164,17 +222,66 @@ const updateModifierOptionSchema = modifierOptionInputSchema.partial().transform
   display_order: data.display_order ?? data.displayOrder
 }));
 
+function formatModifierOption(opt: any) {
+  if (!opt) return opt;
+  const price = Number(opt.additional_price ?? opt.additionalPrice ?? opt.price ?? 0);
+  return {
+    id: opt.id,
+    modifierGroupId: opt.group_id || opt.modifierGroupId,
+    groupId: opt.group_id || opt.modifierGroupId,
+    group_id: opt.group_id || opt.modifierGroupId,
+    name: opt.name,
+    additional_price: price,
+    additionalPrice: price,
+    price: price,
+    is_available: opt.is_available ?? opt.isAvailable ?? true,
+    isAvailable: opt.is_available ?? opt.isAvailable ?? true,
+    display_order: opt.display_order ?? opt.displayOrder ?? 0,
+    displayOrder: opt.display_order ?? opt.displayOrder ?? 0,
+  };
+}
+
+function formatModifierGroup(group: any) {
+  if (!group) return group;
+  return {
+    id: group.id,
+    businessId: group.business_id || group.businessId,
+    business_id: group.business_id || group.businessId,
+    menuItemId: group.menu_item_id || group.menuItemId,
+    menu_item_id: group.menu_item_id || group.menuItemId,
+    name: group.name,
+    selectionType: group.selection_type || group.selectionType || 'SINGLE',
+    selection_type: group.selection_type || group.selectionType || 'SINGLE',
+    minSelections: group.min_selections ?? group.minSelections ?? 0,
+    min_selections: group.min_selections ?? group.minSelections ?? 0,
+    maxSelections: group.max_selections ?? group.maxSelections ?? 1,
+    max_selections: group.max_selections ?? group.maxSelections ?? 1,
+    isRequired: group.is_required ?? group.isRequired ?? false,
+    is_required: group.is_required ?? group.isRequired ?? false,
+    displayOrder: group.display_order ?? group.displayOrder ?? 0,
+    display_order: group.display_order ?? group.displayOrder ?? 0,
+    options: (group.options || []).map(formatModifierOption),
+  };
+}
+
 function formatItem(item: any) {
   if (!item) return item;
+  const formattedGroups = (item.modifier_groups || item.modifierGroups || []).map(formatModifierGroup);
   return {
     ...item,
-    categoryId: item.category_id,
-    isAvailable: item.is_available,
-    imageUrl: item.image_url,
-    preparationTimeMinutes: item.preparation_time,
+    categoryId: item.category_id || item.categoryId,
+    category_id: item.category_id || item.categoryId,
+    isAvailable: item.is_available ?? item.isAvailable ?? true,
+    is_available: item.is_available ?? item.isAvailable ?? true,
+    imageUrl: item.image_url ?? item.imageUrl,
+    image_url: item.image_url ?? item.imageUrl,
+    preparationTimeMinutes: item.preparation_time ?? item.preparationTimeMinutes ?? 10,
+    preparation_time: item.preparation_time ?? item.preparationTimeMinutes ?? 10,
     taxRate: item.tax_rate !== undefined ? Number(item.tax_rate) : undefined,
+    tax_rate: item.tax_rate !== undefined ? Number(item.tax_rate) : undefined,
     price: Number(item.price),
-    modifierGroups: item.modifier_groups,
+    modifierGroups: formattedGroups,
+    modifier_groups: formattedGroups,
   };
 }
 

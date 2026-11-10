@@ -76,6 +76,15 @@ export const publicApi = {
     const response = await apiClient.post<Order>(`/public/orders/${orderId}/switch-to-counter`);
     return normalizeOrder(response.data);
   },
+
+  cancelPublicOrder: async (orderId: string): Promise<Order | null> => {
+    try {
+      const response = await apiClient.post<Order>(`/public/orders/${orderId}/cancel`);
+      return normalizeOrder(response.data);
+    } catch {
+      return null;
+    }
+  },
 };
 
 export default publicApi;

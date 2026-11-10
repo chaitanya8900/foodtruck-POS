@@ -59,9 +59,9 @@ export function normalizeOrder(raw: any): Order {
 }
 
 export const mobileOrdersApi = {
-  getMobileOrders: async (filter?: 'pending_payment' | 'ready_for_token' | 'confirmed'): Promise<Order[]> => {
+  getMobileOrders: async (filter?: 'pending_payment' | 'ready_for_token' | 'confirmed', refresh?: boolean): Promise<Order[]> => {
     const response = await apiClient.get<Order[]>('/mobile-orders', {
-      params: { ...(filter ? { filter } : {}), limit: 100 },
+      params: { ...(filter ? { filter } : {}), ...(refresh ? { refresh: 'true' } : {}), limit: 100 },
     });
     const rawData = response.data;
     const data = Array.isArray(rawData)

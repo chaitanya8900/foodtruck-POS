@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 import prisma from '../prisma';
 import { supabase } from '../lib/supabase';
-import { UnauthorizedError, NotFoundError, ConflictError } from '../middleware/errorHandler';
+import { UnauthorizedError, NotFoundError, ConflictError, TooManyRequestsError } from '../middleware/errorHandler';
 import { JwtUserPayload } from '../types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-food-truck-pos-2024';
@@ -23,12 +23,45 @@ export interface LoginResult {
   business: any;
 }
 
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes lockout
+
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+function checkRateLimit(key: string) {
+  const record = loginAttempts.get(key);
+  if (record) {
+    if (record.lockedUntil > Date.now()) {
+      const waitMinutes = Math.ceil((record.lockedUntil - Date.now()) / 60000);
+      throw new TooManyRequestsError(`Account temporarily locked due to consecutive failed attempts. Please try again in ${waitMinutes} minutes.`);
+    } else if (Date.now() >= record.lockedUntil && record.count >= MAX_FAILED_ATTEMPTS) {
+      loginAttempts.delete(key);
+    }
+  }
+}
+
+function recordFailedAttempt(key: string) {
+  const record = loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
+  record.count += 1;
+  if (record.count >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = Date.now() + LOCKOUT_WINDOW_MS;
+  }
+  loginAttempts.set(key, record);
+}
+
+function recordSuccessfulAttempt(key: string) {
+  loginAttempts.delete(key);
+}
+
 export async function login(
   email: string,
   password: string,
   ipAddress?: string
 ): Promise<LoginResult> {
   const normalizedEmail = email.trim().toLowerCase();
+  const rateLimitKey = `${ipAddress || 'unknown'}:${normalizedEmail}`;
+
+  checkRateLimit(rateLimitKey);
 
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -36,6 +69,7 @@ export async function login(
   });
 
   if (!user) {
+    recordFailedAttempt(rateLimitKey);
     throw new UnauthorizedError('Invalid email or password');
   }
 
@@ -46,34 +80,29 @@ export async function login(
   // Authenticate with Supabase managed authentication if configured
   let supabaseSessionToken: string | undefined = undefined;
 
-  if (supabase) {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password
-      });
-
-      if (authError) {
-        throw new UnauthorizedError(authError.message || 'Invalid email or password');
-      }
-
-      supabaseSessionToken = authData.session?.access_token;
-    } catch (err: any) {
-      if (err instanceof UnauthorizedError) {
-        throw err;
-      }
-      // Fallback to local bcrypt verification if network/provider is temporarily unreachable
-      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-      if (!isPasswordValid) {
-        throw new UnauthorizedError('Invalid email or password');
-      }
+  const verifyPassword = async (): Promise<boolean> => {
+    if (supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password
+        });
+        if (!authError && authData.session?.access_token) {
+          supabaseSessionToken = authData.session.access_token;
+          return true;
+        }
+      } catch {}
     }
-  } else {
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      throw new UnauthorizedError('Invalid email or password');
-    }
+    return bcrypt.compare(password, user.password_hash);
+  };
+
+  const isPasswordValid = await verifyPassword();
+  if (!isPasswordValid) {
+    recordFailedAttempt(rateLimitKey);
+    throw new UnauthorizedError('Invalid email or password');
   }
+
+  recordSuccessfulAttempt(rateLimitKey);
 
   const payload: JwtUserPayload = {
     userId: user.id,

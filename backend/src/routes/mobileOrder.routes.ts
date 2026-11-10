@@ -46,7 +46,8 @@ const mobileOrderQuerySchema = z.object({
   payment_status: z.nativeEnum(PaymentStatus).optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().positive().optional()
+  limit: z.coerce.number().int().positive().optional(),
+  refresh: z.string().optional()
 });
 
 // All mobile order management endpoints require staff authentication
@@ -61,6 +62,11 @@ router.get(
     try {
       // Auto-cancel any stale pending payment orders from previous days so pending payments refresh daily
       await orderService.autoCancelStalePendingPaymentOrders(req.user!.businessId);
+
+      // Invalidate server-side query cache if explicit refresh is requested
+      if (req.query.refresh === 'true' || req.query.refresh === '1') {
+        orderService.clearOrdersQueryCache();
+      }
 
       const filters = {
         ...req.query,

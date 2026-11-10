@@ -193,7 +193,7 @@ async function validateAndCalculateItems(
   };
 }
 
-function generateFastUniqueOrderNumber(prefix: string = 'ORD'): string {
+export function generateFastUniqueOrderNumber(prefix: string = 'ORD'): string {
   const code = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}-${code}`;
 }
@@ -356,7 +356,12 @@ export async function createQROrder(input: CreateQROrderInput) {
   );
 
   const { taxAmount, totalAmount } = calculateTax(subtotal, 0, taxRate);
-  const orderNumber = generateFastUniqueOrderNumber('QR');
+  const isPayAtCounter = input.payment_method === PaymentMethod.CASH;
+  // Official QR-XXXX Order Reference is ONLY generated for confirmed Pay-at-Counter orders!
+  // For online UPI sessions, use a temporary pending identifier until payment succeeds or customer chooses Pay at Counter.
+  const orderNumber = isPayAtCounter
+    ? generateFastUniqueOrderNumber('QR')
+    : generateFastUniqueOrderNumber('ONLINE_PENDING');
 
   // 3. Create Order without token (No token generated until payment confirmed)
   const order = await prisma.$transaction(async (tx) => {
@@ -411,7 +416,7 @@ export async function createQROrder(input: CreateQROrderInput) {
 
   // Emit event to cashier Mobile Orders dashboard in real-time ONLY for Pay-at-Counter orders!
   // For online UPI prepaid orders, we only emit after payment is successfully verified.
-  if (input.payment_method !== PaymentMethod.UPI && input.payment_method !== PaymentMethod.PHONEPE) {
+  if (isPayAtCounter) {
     emitNewOrder(business.id, formatted);
   }
 
@@ -605,6 +610,7 @@ export async function issueToken(
 
 /**
  * Switches an unpaid QR order to Pay at Counter.
+ * Generates and assigns the official QR-XXXX Order Reference if not already assigned.
  */
 export async function switchToCounterPayment(orderId: string) {
   const order = await prisma.order.findUnique({
@@ -619,10 +625,17 @@ export async function switchToCounterPayment(orderId: string) {
     throw new ConflictError('Cannot change payment method for an already paid order.');
   }
 
+  // Official QR-XXXX Order Reference is generated upon switching to Pay at Counter
+  const finalOrderNumber = (!order.order_number || !order.order_number.startsWith('QR-'))
+    ? generateFastUniqueOrderNumber('QR')
+    : order.order_number;
+
   const updated = await prisma.order.update({
     where: { id: orderId },
     data: {
+      order_number: finalOrderNumber,
       payment_method: PaymentMethod.CASH,
+      order_status: OrderStatus.PENDING_PAYMENT,
       updated_at: new Date()
     },
     include: {
@@ -635,9 +648,43 @@ export async function switchToCounterPayment(orderId: string) {
 
   const fullOrder = formatOrder(updated);
   clearOrdersQueryCache();
-  // Notify cashier POS that a Pay-at-Counter order has arrived
+  // Notify cashier POS that a Pay-at-Counter order has arrived with official Order Reference
   emitNewOrder(order.business_id, fullOrder);
   return fullOrder;
+}
+
+/**
+ * Cancels an uncompleted public order if the customer navigates back or abandons the payment.
+ */
+export async function cancelPublicUnpaidOrder(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId }
+  });
+
+  if (!order) return null;
+
+  // Only cancel if it has not been paid
+  if (order.payment_status !== PaymentStatus.PAID) {
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        order_status: OrderStatus.CANCELLED,
+        cancel_reason: 'Cancelled by customer before payment',
+        updated_at: new Date()
+      },
+      include: {
+        table: true,
+        items: true,
+        payments: true,
+        print_jobs: true
+      }
+    });
+
+    clearOrdersQueryCache();
+    return formatOrder(updated);
+  }
+
+  return formatOrder(order);
 }
 
 /**
@@ -769,6 +816,33 @@ export async function autoCancelStalePendingPaymentOrders(businessId?: string): 
             });
           } catch {}
         }
+      }
+
+      // Also auto-cancel abandoned online checkout sessions older than 10 minutes that were never paid or switched to counter
+      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const staleOnlineSessions = await prisma.order.findMany({
+        where: {
+          business_id: biz.id,
+          order_status: OrderStatus.PENDING_PAYMENT,
+          payment_status: PaymentStatus.PENDING,
+          payment_method: { not: PaymentMethod.CASH },
+          created_at: { lt: tenMinsAgo }
+        },
+        select: { id: true, order_number: true }
+      });
+
+      if (staleOnlineSessions.length > 0) {
+        const sessionIds = staleOnlineSessions.map((o) => o.id);
+        const res = await prisma.order.updateMany({
+          where: { id: { in: sessionIds } },
+          data: {
+            order_status: OrderStatus.CANCELLED,
+            payment_status: PaymentStatus.FAILED,
+            cancel_reason: 'Auto-cancelled: Online payment session timed out',
+            updated_at: new Date()
+          }
+        });
+        totalCancelled += res.count;
       }
     }
 
@@ -1016,6 +1090,10 @@ export async function getOrders(businessId: string, filters: OrderQueryFilters) 
   if (tabFilter === 'pending_payment' || tabFilter === 'pending') {
     where.payment_status = PaymentStatus.PENDING;
     where.order_status = { not: OrderStatus.CANCELLED };
+    // CRITICAL: Pending payments strictly shows confirmed Pay at Counter orders with official QR Order Reference!
+    // Uncompleted or failed online UPI payment attempts must NEVER appear here.
+    where.payment_method = PaymentMethod.CASH;
+    where.order_number = { startsWith: 'QR-' };
     // Pending payments only show current operating day's orders
     const business = await prisma.business.findUnique({
       where: { id: businessId },

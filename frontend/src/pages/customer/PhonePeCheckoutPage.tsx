@@ -339,7 +339,12 @@ export const PhonePeCheckoutPage: React.FC = () => {
                 <button
                   type="button"
                   disabled={isSwitching}
-                  onClick={() => navigate(`/order/t/${targetQrToken}/cart`)}
+                  onClick={() => {
+                    if (targetOrderId) {
+                      publicApi.cancelPublicOrder(targetOrderId).catch(() => {});
+                    }
+                    navigate(`/order/t/${targetQrToken}/cart`);
+                  }}
                   className="w-full py-2 text-xs font-semibold text-[#6B4F48] hover:text-[#3A0A0F] flex items-center justify-center gap-1 transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -393,7 +398,12 @@ export const PhonePeCheckoutPage: React.FC = () => {
                   <button
                     type="button"
                     disabled={isLoading}
-                    onClick={() => navigate(`/order/t/${targetQrToken}/payment`)}
+                    onClick={() => {
+                      if (targetOrderId) {
+                        publicApi.cancelPublicOrder(targetOrderId).catch(() => {});
+                      }
+                      navigate(`/order/t/${targetQrToken}/payment`);
+                    }}
                     className="py-2 px-3 border border-[#EAD8C0] bg-[#FAF4F2] hover:bg-[#EAD8C0]/40 text-[#3A0A0F] font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-1"
                   >
                     <ArrowLeft className="w-3 h-3" />

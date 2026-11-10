@@ -18,13 +18,25 @@ export function initSocket(server: HttpServer): Server {
   });
 
   io.use((socket: Socket, next) => {
-    // Check if it is a print agent connection (can authenticate via query/handshake)
+    // Check if it is a print agent connection (must authenticate via agent token)
     const clientType = socket.handshake.auth?.clientType || socket.handshake.query?.clientType;
     const isPrintAgent =
       socket.handshake.auth?.isPrintAgent ||
       clientType?.toString().toLowerCase() === 'print-agent' ||
       clientType?.toString().toLowerCase() === 'print_agent';
+    
     if (isPrintAgent) {
+      const providedAgentToken =
+        socket.handshake.auth?.token ||
+        socket.handshake.query?.agentToken ||
+        socket.handshake.headers?.['x-agent-token'];
+      const expectedAgentToken = process.env.AGENT_TOKEN || 'local-print-agent-token';
+
+      if (providedAgentToken !== expectedAgentToken) {
+        logger.warn({ socketId: socket.id }, 'Print agent connection rejected: invalid agent token');
+        return next(new Error('Authentication failed: Invalid agent token'));
+      }
+
       socket.data.isPrintAgent = true;
       return next();
     }

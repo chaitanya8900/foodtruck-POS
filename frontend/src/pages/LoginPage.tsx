@@ -78,7 +78,22 @@ export const LoginPage: React.FC = () => {
           break;
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Invalid email or password';
+      const serverMsg = err.response?.data?.message || err.response?.data?.error;
+      const status = err.response?.status;
+      let msg = 'Invalid email or password';
+
+      if (serverMsg) {
+        msg = serverMsg;
+      } else if (status === 500) {
+        msg = 'Backend server error (500). Please verify database connection and environment variables in Vercel.';
+      } else if (status === 502 || status === 504) {
+        msg = 'Server gateway error (502/504). Backend service failed to respond.';
+      } else if (status === 404) {
+        msg = 'API endpoint not found (404). Check backend routing in vercel.json.';
+      } else if (err.message && !err.response) {
+        msg = `Network connection error: ${err.message}.`;
+      }
+
       setServerError(msg);
       toast.error(msg);
     }
@@ -114,7 +129,7 @@ export const LoginPage: React.FC = () => {
           <Input
             label="Staff Email"
             type="email"
-            placeholder="admin@foodtruck.com"
+            placeholder="staff@restaurant.com"
             leftIcon={<Mail className="w-4 h-4 text-[#6B4F48]" />}
             error={errors.email?.message}
             {...register('email')}

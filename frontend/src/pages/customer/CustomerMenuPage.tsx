@@ -68,7 +68,7 @@ export const CustomerMenuPage: React.FC = () => {
           isRequired: mg.isRequired ?? mg.is_required ?? false,
           options: (mg.options || []).map((opt: any) => ({
             ...opt,
-            price: Number(opt.price ?? opt.additional_price ?? 0),
+            price: Number(opt.price ?? opt.additionalPrice ?? opt.additional_price ?? 0),
             isAvailable: opt.isAvailable ?? opt.is_available ?? true,
           })),
         })),
@@ -169,7 +169,10 @@ export const CustomerMenuPage: React.FC = () => {
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)] bg-[#FAF4F2]">
       {/* Top Search & Veg / Non-Veg Filters matching IMG_4295.PNG */}
-      <div className="p-3.5 bg-white sticky top-14 z-20 border-b border-neutral-200/80 shadow-xs">
+      <div
+        className="p-3.5 bg-white sticky z-20 border-b border-neutral-200/80 shadow-xs"
+        style={{ top: 'var(--customer-top-offset, 3.5rem)' }}
+      >
         <div className="flex items-center gap-2">
           {/* Search Input */}
           <div className="relative flex-1">

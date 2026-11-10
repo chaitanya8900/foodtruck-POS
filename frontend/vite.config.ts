@@ -13,6 +13,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:5001',

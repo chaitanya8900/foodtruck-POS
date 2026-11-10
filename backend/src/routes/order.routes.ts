@@ -154,7 +154,7 @@ const handleCounterOrder = async (req: AuthRequest, res: Response, next: any) =>
       const rawModifiers = Array.isArray(item.modifiers || item.customizations) ? (item.modifiers || item.customizations) : [];
       const modifiers = rawModifiers.map((m: any) => ({
         group_id: (m.group_id || m.groupId || m.modifierGroupId || '00000000-0000-0000-0000-000000000000').toString(),
-        group_name: (m.group_name || m.groupName || '').toString().slice(0, 100),
+        group_name: (m.group_name || m.groupName || m.modifierGroupName || '').toString().slice(0, 100),
         option_id: (m.option_id || m.optionId || m.id || '').toString(),
         option_name: (m.option_name || m.optionName || m.name || '').toString().slice(0, 100),
         price: Math.max(0, Number(m.price || m.additionalPrice || 0))

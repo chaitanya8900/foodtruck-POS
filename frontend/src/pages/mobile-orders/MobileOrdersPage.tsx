@@ -11,6 +11,7 @@ import {
   Utensils,
   ShoppingBag,
   Search,
+  RefreshCw,
 } from 'lucide-react';
 
 import mobileOrdersApi, { ConfirmPaymentPayload, normalizeOrder } from '@/api/mobile-orders';
@@ -36,14 +37,31 @@ export const MobileOrdersPage: React.FC = () => {
   const [paymentReference, setPaymentReference] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
   const [confirmedTokenOrder, setConfirmedTokenOrder] = useState<Order | null>(null);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Unified single query for all mobile orders with in-memory caching for instant page transitions
-  const { data: allMobileOrders = [], isLoading } = useQuery({
+  const { data: allMobileOrders = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['mobileOrders'],
     queryFn: () => mobileOrdersApi.getMobileOrders(),
     staleTime: 60 * 1000,
     refetchInterval: 15 * 1000,
   });
+
+  const handleManualRefresh = async () => {
+    if (isFetching || isManualRefreshing) return;
+    setIsManualRefreshing(true);
+    try {
+      // Invalidate server-side cache and refetch latest orders
+      await mobileOrdersApi.getMobileOrders(undefined, true);
+      await queryClient.invalidateQueries({ queryKey: ['mobileOrders'] });
+      await refetch();
+      toast.success('Orders refreshed', { id: 'mobile-orders-refresh', duration: 1500 });
+    } catch {
+      toast.error('Failed to refresh orders');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
 
   const isMobileQROrder = (order: any): boolean => {
     if (!order) return false;
@@ -115,6 +133,13 @@ export const MobileOrdersPage: React.FC = () => {
       const isCancelled = o.orderStatus === OrderStatus.CANCELLED || (o as any).order_status === 'CANCELLED';
       const hasToken = !!(o.tokenNumber || (o as any).token_number);
       if (isPaid || hasToken || isCancelled) return false;
+
+      // CRITICAL: Only confirmed Pay-at-Counter orders with official QR-XXXX Order Reference appear in Pending Payments!
+      // In-progress or failed online UPI payment attempts must NEVER appear here.
+      const paymentMethod = (o.paymentMethod || (o as any).payment_method || '').toString().toUpperCase();
+      const orderNumber = (o.orderNumber || (o as any).order_number || '').toString().toUpperCase();
+      const isPayAtCounter = (paymentMethod === 'CASH' || !paymentMethod.includes('UPI')) && orderNumber.startsWith('QR-');
+      if (!isPayAtCounter) return false;
 
       // Pending payment tab refreshes everyday: only show today's pay-at-counter orders
       const orderDate = new Date(o.createdAt || (o as any).created_at);
@@ -270,6 +295,22 @@ export const MobileOrdersPage: React.FC = () => {
               </button>
             )}
           </div>
+
+          {/* Small Refresh Button (Arrows Only) */}
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isFetching || isManualRefreshing}
+            title="Refresh orders list"
+            aria-label="Refresh orders list"
+            className="w-9 h-9 flex items-center justify-center shrink-0 self-center rounded-xl bg-[#FAF4F2] hover:bg-[#EAD8C0]/50 active:scale-95 border border-[#EAD8C0] text-[#3A0A0F] hover:text-[#5B0F1B] transition-all shadow-sm disabled:opacity-60"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${
+                isFetching || isManualRefreshing ? 'animate-spin text-[#5B0F1B]' : 'text-[#3A0A0F]'
+              }`}
+            />
+          </button>
 
           {/* 3-Tab Selector */}
           <div className="flex items-center gap-2 bg-[#FAF4F2] border border-[#EAD8C0] p-1.5 rounded-xl">

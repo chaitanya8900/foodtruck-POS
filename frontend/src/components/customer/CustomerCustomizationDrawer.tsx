@@ -81,14 +81,15 @@ export const CustomerCustomizationDrawer: React.FC<CustomerCustomizationDrawerPr
         const defaults: CartItemModifier[] = [];
         if (menuItem.modifierGroups) {
           menuItem.modifierGroups.forEach((group) => {
-            if (group.isRequired && group.selectionType === SelectionType.SINGLE && group.options.length > 0) {
+            const isSingleGroup = group.selectionType === SelectionType.SINGLE || (group.selectionType as any) === 'SINGLE';
+            if (group.isRequired && isSingleGroup && group.options.length > 0) {
               const firstOpt = group.options.find((o) => o.isAvailable) || group.options[0];
               defaults.push({
                 modifierGroupId: group.id,
                 modifierGroupName: group.name,
                 optionId: firstOpt.id,
                 optionName: firstOpt.name,
-                price: Number(firstOpt.price || 0),
+                price: Number(firstOpt.price ?? (firstOpt as any).additionalPrice ?? (firstOpt as any).additional_price ?? 0),
               });
             }
           });
@@ -228,7 +229,7 @@ export const CustomerCustomizationDrawer: React.FC<CustomerCustomizationDrawerPr
         <div className="px-6 py-4 overflow-y-auto space-y-6 flex-1 divide-y divide-neutral-100">
           {menuItem.modifierGroups && menuItem.modifierGroups.length > 0 ? (
             menuItem.modifierGroups.map((group) => {
-              const isSingle = group.selectionType === SelectionType.SINGLE;
+              const isSingle = group.selectionType === SelectionType.SINGLE || (group.selectionType as any) === 'SINGLE';
               const currentGroupSelections = selectedModifiers.filter((m) => m.modifierGroupId === group.id);
               const maxCount = group.maxSelections || (isSingle ? 1 : group.options.length);
 

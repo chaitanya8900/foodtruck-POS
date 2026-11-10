@@ -39,14 +39,15 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       const initialModifiers: CartItemModifier[] = [];
       if (menuItem.modifierGroups) {
         menuItem.modifierGroups.forEach((group) => {
-          if (group.isRequired && group.selectionType === SelectionType.SINGLE && group.options.length > 0) {
+          const isSingle = group.selectionType === SelectionType.SINGLE || (group.selectionType as any) === 'SINGLE';
+          if (group.isRequired && isSingle && group.options.length > 0) {
             const firstAvailable = group.options.find((o) => o.isAvailable) || group.options[0];
             initialModifiers.push({
               modifierGroupId: group.id,
               modifierGroupName: group.name,
               optionId: firstAvailable.id,
               optionName: firstAvailable.name,
-              price: Number(firstAvailable.price || 0),
+              price: Number(firstAvailable.price ?? (firstAvailable as any).additionalPrice ?? (firstAvailable as any).additional_price ?? 0),
             });
           }
         });
@@ -143,7 +144,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
           {/* Modifier Groups */}
           {menuItem.modifierGroups && menuItem.modifierGroups.length > 0 ? (
             menuItem.modifierGroups.map((group) => {
-              const isSingle = group.selectionType === SelectionType.SINGLE;
+              const isSingle = group.selectionType === SelectionType.SINGLE || (group.selectionType as any) === 'SINGLE';
               const currentSelected = selectedModifiers.filter((m) => m.modifierGroupId === group.id);
 
               return (

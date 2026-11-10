@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast';
 
 import menuApi from '@/api/menu';
-import { MenuItem, ModifierGroup } from '@/types';
+import { MenuItem, ModifierGroup, SelectionType } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -71,6 +71,23 @@ export const MenuItemsPage: React.FC = () => {
       imageUrl: item.imageUrl || item.image_url || '',
       isAvailable: item.isAvailable !== undefined ? item.isAvailable : (item.is_available !== undefined ? item.is_available : true),
       price: Number(item.price || 0),
+      modifierGroups: (item.modifierGroups || item.modifier_groups || []).map((g: any, gIdx: number) => ({
+        id: g.id || `temp-${gIdx}`,
+        businessId: g.businessId || g.business_id || '',
+        name: g.name,
+        selectionType: g.selectionType || g.selection_type || SelectionType.SINGLE,
+        minSelections: g.minSelections ?? g.min_selections ?? 0,
+        maxSelections: g.maxSelections ?? g.max_selections ?? 1,
+        isRequired: g.isRequired ?? g.is_required ?? false,
+        options: (g.options || []).map((o: any, oIdx: number) => ({
+          id: o.id || `opt-${gIdx}-${oIdx}`,
+          modifierGroupId: o.modifierGroupId || o.group_id || g.id,
+          name: o.name,
+          price: Number(o.price ?? o.additionalPrice ?? o.additional_price ?? 0),
+          isAvailable: o.isAvailable ?? o.is_available ?? true,
+          displayOrder: o.displayOrder ?? o.display_order ?? oIdx,
+        })),
+      })),
     })).filter((item: any) => {
       const matchCat =
         selectedCategoryFilter === 'all' || item.categoryId === selectedCategoryFilter;
@@ -93,7 +110,26 @@ export const MenuItemsPage: React.FC = () => {
       setImageUrl(item.imageUrl || (item as any).image_url || '');
       setPreparationTimeMinutes(String(item.preparationTimeMinutes || (item as any).preparation_time || 10));
       setIsAvailable(item.isAvailable !== undefined ? item.isAvailable : ((item as any).is_available ?? true));
-      setModifierGroups(item.modifierGroups || (item as any).modifier_groups || []);
+      const rawGroups = item.modifierGroups || (item as any).modifier_groups || [];
+      const normalizedGroups = rawGroups.map((g: any, gIdx: number) => ({
+        id: g.id || `temp-${Date.now()}-${gIdx}`,
+        businessId: g.businessId || g.business_id || '',
+        menuItemId: g.menuItemId || g.menu_item_id || item.id,
+        name: g.name || '',
+        selectionType: (g.selectionType || g.selection_type || SelectionType.SINGLE) as SelectionType,
+        minSelections: g.minSelections ?? g.min_selections ?? 0,
+        maxSelections: g.maxSelections ?? g.max_selections ?? 1,
+        isRequired: g.isRequired ?? g.is_required ?? false,
+        options: (g.options || []).map((o: any, oIdx: number) => ({
+          id: o.id || `opt-${Date.now()}-${gIdx}-${oIdx}`,
+          modifierGroupId: o.modifierGroupId || o.group_id || g.id,
+          name: o.name || '',
+          price: Number(o.price ?? o.additionalPrice ?? o.additional_price ?? 0),
+          isAvailable: o.isAvailable ?? o.is_available ?? true,
+          displayOrder: o.displayOrder ?? o.display_order ?? oIdx,
+        })),
+      }));
+      setModifierGroups(normalizedGroups);
     } else {
       setEditingItem(null);
       setName('');
